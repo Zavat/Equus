@@ -57,6 +57,13 @@ export default function ContactSelector({ visible, onClose, onContactsSelected }
     try {
       setLoading(true);
 
+      const { status } = await Contacts.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'We need permission to access your contacts');
+        setLoading(false);
+        return;
+      }
+
       const { data: contactsData } = await Contacts.getContactsAsync({
         fields: [Contacts.Fields.Emails, Contacts.Fields.PhoneNumbers],
       });
