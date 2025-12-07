@@ -31,12 +31,12 @@ interface Horse {
 export default function CreateAppointmentScreen() {
   const { profile, isFarrier } = useAuth();
   const router = useRouter();
-  const { date } = useLocalSearchParams();
+  const { date, hour } = useLocalSearchParams();
   const [clients, setClients] = useState<Client[]>([]);
   const [horses, setHorses] = useState<Horse[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [selectedHorseIds, setSelectedHorseIds] = useState<Set<string>>(new Set());
-  const [selectedHour, setSelectedHour] = useState('09');
+  const [selectedHour, setSelectedHour] = useState(hour ? String(hour) : '09');
   const [selectedMinute, setSelectedMinute] = useState('00');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);

@@ -7,12 +7,15 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Plus, ChevronLeft } from 'lucide-react-native';
 import { Colors } from '@/constants/colors';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 'react-native-reanimated';
 
 interface Appointment {
   id: string;
@@ -24,6 +27,105 @@ interface Appointment {
 }
 
 const HOURS = Array.from({ length: 16 }, (_, i) => i + 6);
+const HOUR_HEIGHT = 80;
+
+function DraggableAppointment({
+  appointment,
+  isFarrier,
+  onPress,
+  onDragEnd,
+}: {
+  appointment: Appointment;
+  isFarrier: boolean;
+  onPress: () => void;
+  onDragEnd: (newDate: string) => void;
+}) {
+  const date = new Date(appointment.proposed_date);
+  const hour = date.getHours();
+  const minutes = date.getMinutes();
+  const initialTop = (hour - 6) * HOUR_HEIGHT + (minutes / 60) * HOUR_HEIGHT;
+
+  const translateY = useSharedValue(0);
+  const startY = useSharedValue(initialTop);
+
+  const panGesture = Gesture.Pan()
+    .onStart(() => {
+      startY.value = initialTop + translateY.value;
+    })
+    .onUpdate((event) => {
+      translateY.value = event.translationY;
+    })
+    .onEnd(() => {
+      const newTop = startY.value + translateY.value;
+      const snappedTop = Math.round(newTop / (HOUR_HEIGHT / 4)) * (HOUR_HEIGHT / 4);
+      translateY.value = withSpring(snappedTop - initialTop);
+
+      const hourOffset = Math.floor(snappedTop / HOUR_HEIGHT);
+      const minuteOffset = ((snappedTop % HOUR_HEIGHT) / HOUR_HEIGHT) * 60;
+      const newHour = 6 + hourOffset;
+      const newMinute = Math.round(minuteOffset);
+
+      const newDate = new Date(appointment.proposed_date);
+      newDate.setHours(newHour, newMinute, 0, 0);
+
+      runOnJS(onDragEnd)(newDate.toISOString());
+    });
+
+  const tapGesture = Gesture.Tap()
+    .onEnd(() => {
+      runOnJS(onPress)();
+    });
+
+  const composedGesture = Gesture.Simultaneous(panGesture, tapGesture);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
+
+  const displayName = isFarrier
+    ? appointment.customer?.full_name
+    : appointment.farrier?.full_name;
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'proposed':
+        return '#FFA500';
+      case 'accepted':
+      case 'confirmed':
+        return '#4CAF50';
+      case 'completed':
+        return '#9E9E9E';
+      default:
+        return Colors.silver;
+    }
+  };
+
+  return (
+    <GestureDetector gesture={composedGesture}>
+      <Animated.View
+        style={[
+          styles.appointmentBlock,
+          {
+            top: initialTop,
+            backgroundColor: getStatusColor(appointment.status),
+          },
+          animatedStyle,
+        ]}
+      >
+        <Text style={styles.appointmentTime}>
+          {new Date(appointment.proposed_date).toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
+        </Text>
+        <Text style={styles.appointmentName}>{displayName}</Text>
+        <Text style={styles.appointmentHorses}>
+          {appointment.num_horses} {appointment.num_horses === 1 ? 'horse' : 'horses'}
+        </Text>
+      </Animated.View>
+    </GestureDetector>
+  );
+}
 
 export default function DayViewScreen() {
   const { profile, isFarrier } = useAuth();
@@ -74,26 +176,34 @@ export default function DayViewScreen() {
     }
   }
 
-  function getAppointmentPosition(appointmentDate: string) {
-    const date = new Date(appointmentDate);
-    const hour = date.getHours();
-    const minutes = date.getMinutes();
-    const top = (hour - 6) * 80 + (minutes / 60) * 80;
-    return top;
+  async function handleAppointmentDragEnd(appointmentId: string, newDate: string) {
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .update({ proposed_date: newDate })
+        .eq('id', appointmentId);
+
+      if (error) throw error;
+
+      setAppointments((prev) =>
+        prev.map((apt) =>
+          apt.id === appointmentId ? { ...apt, proposed_date: newDate } : apt
+        )
+      );
+    } catch (error) {
+      console.error('Error updating appointment:', error);
+      Alert.alert('Error', 'Failed to update appointment time');
+    }
   }
 
-  function getStatusColor(status: string) {
-    switch (status) {
-      case 'proposed':
-        return '#FFA500';
-      case 'accepted':
-      case 'confirmed':
-        return '#4CAF50';
-      case 'completed':
-        return '#9E9E9E';
-      default:
-        return Colors.silver;
-    }
+  function handleLongPress(hour: number) {
+    const selectedDate = new Date(date as string);
+    selectedDate.setHours(hour, 0, 0, 0);
+    router.push(`/calendar/create-appointment?date=${date}&hour=${hour}`);
+  }
+
+  function handleAppointmentPress(appointmentId: string) {
+    router.push(`/appointment/${appointmentId}`);
   }
 
   const selectedDate = new Date(date as string);
@@ -128,48 +238,36 @@ export default function DayViewScreen() {
       ) : (
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           <View style={styles.timelineContainer}>
-            {HOURS.map((hour) => (
-              <View key={hour} style={styles.hourRow}>
-                <View style={styles.hourLabel}>
-                  <Text style={styles.hourText}>
-                    {hour.toString().padStart(2, '0')}:00
-                  </Text>
-                </View>
-                <View style={styles.hourLine} />
-              </View>
-            ))}
-
-            {appointments.map((apt) => {
-              const top = getAppointmentPosition(apt.proposed_date);
-              const displayName = isFarrier
-                ? apt.customer?.full_name
-                : apt.farrier?.full_name;
+            {HOURS.map((hour) => {
+              const longPressGesture = Gesture.LongPress()
+                .minDuration(500)
+                .onEnd(() => {
+                  runOnJS(handleLongPress)(hour);
+                });
 
               return (
-                <TouchableOpacity
-                  key={apt.id}
-                  style={[
-                    styles.appointmentBlock,
-                    {
-                      top,
-                      backgroundColor: getStatusColor(apt.status),
-                    },
-                  ]}
-                  onPress={() => router.push(`/appointment/${apt.id}`)}
-                >
-                  <Text style={styles.appointmentTime}>
-                    {new Date(apt.proposed_date).toLocaleTimeString('en-US', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </Text>
-                  <Text style={styles.appointmentName}>{displayName}</Text>
-                  <Text style={styles.appointmentHorses}>
-                    {apt.num_horses} {apt.num_horses === 1 ? 'horse' : 'horses'}
-                  </Text>
-                </TouchableOpacity>
+                <GestureDetector key={hour} gesture={longPressGesture}>
+                  <View style={styles.hourRow}>
+                    <View style={styles.hourLabel}>
+                      <Text style={styles.hourText}>
+                        {hour.toString().padStart(2, '0')}:00
+                      </Text>
+                    </View>
+                    <View style={styles.hourLine} />
+                  </View>
+                </GestureDetector>
               );
             })}
+
+            {appointments.map((apt) => (
+              <DraggableAppointment
+                key={apt.id}
+                appointment={apt}
+                isFarrier={isFarrier}
+                onPress={() => handleAppointmentPress(apt.id)}
+                onDragEnd={(newDate) => handleAppointmentDragEnd(apt.id, newDate)}
+              />
+            ))}
           </View>
         </ScrollView>
       )}
@@ -227,7 +325,7 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   hourRow: {
-    height: 80,
+    height: HOUR_HEIGHT,
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
