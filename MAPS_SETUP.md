@@ -1,8 +1,12 @@
-# Google Maps Setup for Route Screen
+# Maps Setup for Route Screen
 
-The Route screen now uses Google Maps to display appointment locations. To enable maps on mobile devices, you need to configure Google Maps API keys.
+The Route screen now uses **Expo Maps** to display appointment locations with a professional dual-view layout.
 
-## For iOS
+## Configuration
+
+The app is configured to use `expo-maps`, which works out of the box on iOS and Android. For production builds with Google Maps, you'll need API keys:
+
+### For iOS (Production)
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Create a new project or select an existing one
@@ -11,7 +15,7 @@ The Route screen now uses Google Maps to display appointment locations. To enabl
 5. Restrict the API key to iOS apps with your bundle ID: `com.farrierapp.app`
 6. Open `app.json` and replace `YOUR_IOS_GOOGLE_MAPS_API_KEY` with your actual API key
 
-## For Android
+### For Android (Production)
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Create a new project or select an existing one
@@ -22,24 +26,60 @@ The Route screen now uses Google Maps to display appointment locations. To enabl
 
 ## Important Notes
 
-- The map is **only available on mobile devices** (iOS/Android), not on web
-- On web, a placeholder message is shown instead
-- Maps will not work without valid API keys on mobile devices
-- Make sure to enable billing in Google Cloud Console (Maps API requires it)
+- Maps work on **iOS and Android** (both Expo Go and production builds)
+- On **web**, a placeholder message is shown (maps are mobile-only)
+- For development with Expo Go, default maps will work without API keys
+- For production builds, Google Maps API keys are required
+- Make sure to enable billing in Google Cloud Console
 - Consider adding usage quotas to avoid unexpected charges
 
 ## Features Implemented
 
-- **Dual-view layout**: List of stops on the left, map on the right
-- **Interactive markers**: Tap list items to highlight markers, tap markers to select stops
-- **Next stop indicator**: First stop is highlighted in green
-- **Dynamic updates**: Completing a stop removes it from the list and updates the map
-- **Navigation button**: "Apri percorso in Maps" opens Google Maps with directions to the next stop
-- **Auto-centering**: Map automatically fits to show all remaining stops
+### Dual-View Layout
+- **Left panel**: Scrollable list of today's stops
+- **Right panel**: Interactive map with markers
 
-## Testing Without API Keys
+### List Features
+- Each stop shows: client name, address, horses count, time
+- First stop highlighted in green (next stop)
+- Selected stop highlighted in blue
+- Tap any stop to highlight its marker on the map
+- Phone call button (if customer has phone)
+- Complete button to mark stop as done
 
-For development on web, the map placeholder will be shown. To test the full functionality, you must:
-1. Set up API keys as described above
-2. Build and run the app on a physical device or iOS/Android emulator
-3. Use `expo run:ios` or `expo run:android` (requires development build)
+### Map Features
+- Color-coded markers:
+  - **Green**: Next stop (first in list)
+  - **Blue**: Selected stop
+  - **Red**: Other stops
+- Tap marker to select and show stop info
+- Auto-centers when stops are completed
+- Zoom and pan controls
+- Shows user location
+
+### Dynamic Updates
+- Completing a stop removes it from the list
+- Map automatically recenters to remaining stops
+- Route updates in real-time
+
+### Navigation
+- **"Apri percorso in Maps"** button at bottom
+- Opens Google Maps with turn-by-turn directions to next stop
+- Uses device's current location as starting point
+
+## Testing
+
+### On Expo Go (Development)
+- Install Expo Go app on your iOS/Android device
+- Scan QR code from `npm run dev`
+- Maps will work without additional configuration
+
+### On Production Build
+- Run `eas build --platform ios` or `eas build --platform android`
+- Requires Google Maps API keys configured in `app.json`
+- Test on physical device or emulator
+
+### On Web
+- Maps are disabled on web (shows placeholder)
+- List functionality works normally
+- "Apri percorso in Maps" button still functions

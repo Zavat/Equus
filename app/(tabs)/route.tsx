@@ -12,10 +12,10 @@ import {
   Platform,
   Dimensions,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import { GoogleMaps } from 'expo-maps';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { Navigation, MapPin, Phone, CheckCircle, Sparkles } from 'lucide-react-native';
+import { Navigation, MapPin, Phone, CheckCircle } from 'lucide-react-native';
 import { Colors } from '@/constants/colors';
 
 interface RouteStop {
@@ -40,26 +40,11 @@ export default function RouteScreen() {
   const [stops, setStops] = useState<RouteStop[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
-  const [optimizing, setOptimizing] = useState(false);
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<any>(null);
 
   useEffect(() => {
     loadTodaysRoute();
   }, [profile]);
-
-  useEffect(() => {
-    if (selectedStopId && mapRef.current) {
-      const stop = stops.find((s) => s.id === selectedStopId);
-      if (stop?.latitude && stop?.longitude) {
-        mapRef.current.animateToRegion({
-          latitude: stop.latitude,
-          longitude: stop.longitude,
-          latitudeDelta: 0.02,
-          longitudeDelta: 0.02,
-        });
-      }
-    }
-  }, [selectedStopId]);
 
   async function loadTodaysRoute() {
     if (!profile) return;
@@ -113,22 +98,6 @@ export default function RouteScreen() {
       }));
 
       setStops(formattedStops);
-
-      if (formattedStops.length > 0 && mapRef.current) {
-        const validStops = formattedStops.filter((s) => s.latitude && s.longitude);
-        if (validStops.length > 0) {
-          mapRef.current.fitToCoordinates(
-            validStops.map((s) => ({
-              latitude: s.latitude!,
-              longitude: s.longitude!,
-            })),
-            {
-              edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
-              animated: true,
-            }
-          );
-        }
-      }
     } catch (error) {
       console.error('Error loading route:', error);
     } finally {
@@ -164,22 +133,6 @@ export default function RouteScreen() {
       if (error) throw error;
 
       setStops((prev) => prev.filter((s) => s.id !== stopId));
-
-      const remainingStops = stops.filter((s) => s.id !== stopId && s.latitude && s.longitude);
-      if (remainingStops.length > 0 && mapRef.current) {
-        setTimeout(() => {
-          mapRef.current?.fitToCoordinates(
-            remainingStops.map((s) => ({
-              latitude: s.latitude!,
-              longitude: s.longitude!,
-            })),
-            {
-              edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
-              animated: true,
-            }
-          );
-        }, 300);
-      }
     } catch (error) {
       console.error('Error marking stop as completed:', error);
       Alert.alert('Errore', 'Impossibile completare la tappa');
@@ -188,26 +141,49 @@ export default function RouteScreen() {
 
   function handleStopPress(stopId: string) {
     setSelectedStopId(stopId);
+    const stop = stops.find((s) => s.id === stopId);
+    if (stop?.latitude && stop?.longitude && mapRef.current) {
+      mapRef.current.animateCamera({
+        center: {
+          latitude: stop.latitude,
+          longitude: stop.longitude,
+        },
+        zoom: 15,
+      });
+    }
   }
 
-  const getMarkerColor = (stop: RouteStop, index: number) => {
-    if (index === 0) return '#4CAF50';
-    if (selectedStopId === stop.id) return '#007AFF';
-    return '#FF5722';
-  };
+  const markers = stops
+    .filter((stop) => stop.latitude && stop.longitude)
+    .map((stop, index) => {
+      const isFirst = index === 0;
+      const isSelected = selectedStopId === stop.id;
 
-  const initialRegion = stops.length > 0 && stops[0].latitude && stops[0].longitude
+      return {
+        id: stop.id,
+        coordinates: {
+          latitude: stop.latitude!,
+          longitude: stop.longitude!,
+        },
+        title: stop.customer_name,
+        snippet: `${stop.num_horses} ${stop.num_horses === 1 ? 'cavallo' : 'cavalli'}`,
+      };
+    });
+
+  const initialCameraPosition = stops.length > 0 && stops[0].latitude && stops[0].longitude
     ? {
-        latitude: stops[0].latitude,
-        longitude: stops[0].longitude,
-        latitudeDelta: 0.1,
-        longitudeDelta: 0.1,
+        center: {
+          latitude: stops[0].latitude,
+          longitude: stops[0].longitude,
+        },
+        zoom: 12,
       }
     : {
-        latitude: 45.4642,
-        longitude: 9.19,
-        latitudeDelta: 0.5,
-        longitudeDelta: 0.5,
+        center: {
+          latitude: 45.4642,
+          longitude: 9.19,
+        },
+        zoom: 10,
       };
 
   if (loading) {
@@ -308,40 +284,24 @@ export default function RouteScreen() {
             </View>
           ) : (
             <>
-              <MapView
+              <GoogleMaps.View
                 ref={mapRef}
                 style={styles.map}
-                provider={PROVIDER_GOOGLE}
-                initialRegion={initialRegion}
-                showsUserLocation
-                showsMyLocationButton
-              >
-                {stops.map((stop, index) => {
-                  if (!stop.latitude || !stop.longitude) return null;
-                  return (
-                    <Marker
-                      key={stop.id}
-                      coordinate={{
-                        latitude: stop.latitude,
-                        longitude: stop.longitude,
-                      }}
-                      pinColor={getMarkerColor(stop, index)}
-                      onPress={() => setSelectedStopId(stop.id)}
-                    >
-                      <View style={styles.markerContainer}>
-                        <View
-                          style={[
-                            styles.markerBadge,
-                            { backgroundColor: getMarkerColor(stop, index) },
-                          ]}
-                        >
-                          <Text style={styles.markerText}>{index + 1}</Text>
-                        </View>
-                      </View>
-                    </Marker>
-                  );
-                })}
-              </MapView>
+                initialCameraPosition={initialCameraPosition}
+                markers={markers}
+                mapProperties={{
+                  myLocationEnabled: true,
+                }}
+                mapUISettings={{
+                  myLocationButtonEnabled: true,
+                  zoomControlsEnabled: true,
+                }}
+                onMarkerClick={(event) => {
+                  if (event.nativeEvent.id) {
+                    setSelectedStopId(event.nativeEvent.id);
+                  }
+                }}
+              />
 
               <TouchableOpacity style={styles.openMapsButton} onPress={openRouteInMaps}>
                 <Navigation size={20} color="#FFF" />
@@ -505,28 +465,6 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 14,
     fontWeight: '600',
-  },
-  markerContainer: {
-    alignItems: 'center',
-  },
-  markerBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: Colors.white,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  markerText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.white,
   },
   openMapsButton: {
     position: 'absolute',

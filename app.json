@@ -83,7 +83,8 @@
         {
           "contactsPermission": "The app needs access to your contacts to manage customer information."
         }
-      ]
+      ],
+      "expo-maps"
     ],
     "experiments": {
       "typedRoutes": true
