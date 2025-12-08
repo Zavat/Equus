@@ -11,9 +11,10 @@ import {
   Alert,
   Platform,
 } from 'react-native';
+import * as Location from 'expo-location';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { Navigation, MapPin, Phone, CheckCircle, Route as RouteIcon } from 'lucide-react-native';
+import { Navigation, MapPin, Phone, CheckCircle, Route as RouteIcon, Map } from 'lucide-react-native';
 import { Colors } from '@/constants/colors';
 
 // Conditional import for native platforms only
@@ -66,6 +67,11 @@ export default function RouteScreen() {
   const [stops, setStops] = useState<RouteStop[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
+  const [showMap, setShowMap] = useState(false);
+  const [userLocation, setUserLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
 
   useEffect(() => {
     loadTodaysRoute();
@@ -192,6 +198,31 @@ export default function RouteScreen() {
     setSelectedStopId(stopId);
   }
 
+  async function getUserLocation() {
+    if (Platform.OS === 'web') {
+      Alert.alert('Errore', 'Geolocalizzazione non disponibile su web');
+      return;
+    }
+
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Errore', 'Permesso di localizzazione negato');
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({});
+      setUserLocation({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      });
+      setShowMap(true);
+    } catch (error) {
+      console.error('Error getting location:', error);
+      Alert.alert('Errore', 'Impossibile ottenere la posizione');
+    }
+  }
+
   const initialRegion = stops.length > 0 && stops[0].latitude && stops[0].longitude
     ? {
         latitude: stops[0].latitude,
@@ -222,9 +253,44 @@ export default function RouteScreen() {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Percorso di Oggi</Text>
         </View>
-        <View style={styles.centerContent}>
-          <MapPin size={48} color="#CCC" />
-          <Text style={styles.emptyText}>Nessuna tappa programmata per oggi</Text>
+        <View style={styles.dualView}>
+          <View style={styles.listContainer}>
+            <View style={styles.centerContent}>
+              <MapPin size={48} color="#CCC" />
+              <Text style={styles.emptyText}>Nessuna tappa programmata per oggi</Text>
+            </View>
+          </View>
+
+          <View style={styles.mapContainer}>
+            {!showMap ? (
+              <View style={styles.centerContent}>
+                <TouchableOpacity
+                  style={styles.showMapButton}
+                  onPress={getUserLocation}
+                >
+                  <Map size={32} color={Colors.silver} />
+                  <Text style={styles.showMapButtonText}>Mappa</Text>
+                </TouchableOpacity>
+              </View>
+            ) : isWeb ? (
+              <View style={styles.webMapPlaceholder}>
+                <MapPin size={48} color="#CCC" />
+                <Text style={styles.webMapText}>Map disabled in web preview</Text>
+              </View>
+            ) : userLocation ? (
+              <MapView
+                style={styles.map}
+                initialRegion={{
+                  latitude: userLocation.latitude,
+                  longitude: userLocation.longitude,
+                  latitudeDelta: 0.01,
+                  longitudeDelta: 0.01,
+                }}
+                showsUserLocation={true}
+                showsMyLocationButton={true}
+              />
+            ) : null}
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -582,5 +648,23 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 16,
     fontWeight: '700',
+  },
+  showMapButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    gap: 12,
+  },
+  showMapButtonText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.silver,
   },
 });

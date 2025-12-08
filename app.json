@@ -84,6 +84,12 @@
           "contactsPermission": "The app needs access to your contacts to manage customer information."
         }
       ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "This app needs access to your location to show you the route map."
+        }
+      ],
       "expo-maps"
     ],
     "experiments": {
