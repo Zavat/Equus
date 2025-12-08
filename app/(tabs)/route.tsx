@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -10,9 +10,8 @@ import {
   Linking,
   Alert,
   Platform,
-  Dimensions,
 } from 'react-native';
-import { GoogleMaps } from 'expo-maps';
+import { MapView, Marker } from 'expo-maps';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Navigation, MapPin, Phone, CheckCircle } from 'lucide-react-native';
@@ -32,7 +31,6 @@ interface RouteStop {
   status: string;
 }
 
-const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
 
 export default function RouteScreen() {
@@ -40,7 +38,6 @@ export default function RouteScreen() {
   const [stops, setStops] = useState<RouteStop[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
-  const mapRef = useRef<any>(null);
 
   useEffect(() => {
     loadTodaysRoute();
@@ -141,49 +138,20 @@ export default function RouteScreen() {
 
   function handleStopPress(stopId: string) {
     setSelectedStopId(stopId);
-    const stop = stops.find((s) => s.id === stopId);
-    if (stop?.latitude && stop?.longitude && mapRef.current) {
-      mapRef.current.animateCamera({
-        center: {
-          latitude: stop.latitude,
-          longitude: stop.longitude,
-        },
-        zoom: 15,
-      });
-    }
   }
 
-  const markers = stops
-    .filter((stop) => stop.latitude && stop.longitude)
-    .map((stop, index) => {
-      const isFirst = index === 0;
-      const isSelected = selectedStopId === stop.id;
-
-      return {
-        id: stop.id,
-        coordinates: {
-          latitude: stop.latitude!,
-          longitude: stop.longitude!,
-        },
-        title: stop.customer_name,
-        snippet: `${stop.num_horses} ${stop.num_horses === 1 ? 'cavallo' : 'cavalli'}`,
-      };
-    });
-
-  const initialCameraPosition = stops.length > 0 && stops[0].latitude && stops[0].longitude
+  const initialRegion = stops.length > 0 && stops[0].latitude && stops[0].longitude
     ? {
-        center: {
-          latitude: stops[0].latitude,
-          longitude: stops[0].longitude,
-        },
-        zoom: 12,
+        latitude: stops[0].latitude,
+        longitude: stops[0].longitude,
+        latitudeDelta: 0.1,
+        longitudeDelta: 0.1,
       }
     : {
-        center: {
-          latitude: 45.4642,
-          longitude: 9.19,
-        },
-        zoom: 10,
+        latitude: 45.4642,
+        longitude: 9.19,
+        latitudeDelta: 0.5,
+        longitudeDelta: 0.5,
       };
 
   if (loading) {
@@ -284,24 +252,27 @@ export default function RouteScreen() {
             </View>
           ) : (
             <>
-              <GoogleMaps.View
-                ref={mapRef}
+              <MapView
                 style={styles.map}
-                initialCameraPosition={initialCameraPosition}
-                markers={markers}
-                mapProperties={{
-                  myLocationEnabled: true,
-                }}
-                mapUISettings={{
-                  myLocationButtonEnabled: true,
-                  zoomControlsEnabled: true,
-                }}
-                onMarkerClick={(event) => {
-                  if (event.nativeEvent.id) {
-                    setSelectedStopId(event.nativeEvent.id);
-                  }
-                }}
-              />
+                initialRegion={initialRegion}
+                showsUserLocation={true}
+                showsMyLocationButton={true}
+              >
+                {stops
+                  .filter((stop) => stop.latitude && stop.longitude)
+                  .map((stop, index) => (
+                    <Marker
+                      key={stop.id}
+                      coordinate={{
+                        latitude: stop.latitude!,
+                        longitude: stop.longitude!,
+                      }}
+                      title={stop.customer_name}
+                      description={`${stop.num_horses} ${stop.num_horses === 1 ? 'cavallo' : 'cavalli'}`}
+                      onPress={() => setSelectedStopId(stop.id)}
+                    />
+                  ))}
+              </MapView>
 
               <TouchableOpacity style={styles.openMapsButton} onPress={openRouteInMaps}>
                 <Navigation size={20} color="#FFF" />
