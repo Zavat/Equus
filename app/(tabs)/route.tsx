@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,11 +9,14 @@ import {
   ActivityIndicator,
   Linking,
   Alert,
+  Platform,
+  Dimensions,
 } from 'react-native';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Navigation, MapPin, Phone, CheckCircle, Sparkles } from 'lucide-react-native';
-import { getOptimizedRoute, OptimizedRoute } from '@/utils/aiHelpers';
+import { Colors } from '@/constants/colors';
 
 interface RouteStop {
   id: string;
@@ -29,17 +32,34 @@ interface RouteStop {
   status: string;
 }
 
+const { width } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
+
 export default function RouteScreen() {
   const { profile } = useAuth();
   const [stops, setStops] = useState<RouteStop[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentStopIndex, setCurrentStopIndex] = useState(0);
+  const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
   const [optimizing, setOptimizing] = useState(false);
-  const [optimizedRoute, setOptimizedRoute] = useState<OptimizedRoute | null>(null);
+  const mapRef = useRef<MapView>(null);
 
   useEffect(() => {
     loadTodaysRoute();
   }, [profile]);
+
+  useEffect(() => {
+    if (selectedStopId && mapRef.current) {
+      const stop = stops.find((s) => s.id === selectedStopId);
+      if (stop?.latitude && stop?.longitude) {
+        mapRef.current.animateToRegion({
+          latitude: stop.latitude,
+          longitude: stop.longitude,
+          latitudeDelta: 0.02,
+          longitudeDelta: 0.02,
+        });
+      }
+    }
+  }, [selectedStopId]);
 
   async function loadTodaysRoute() {
     if (!profile) return;
@@ -73,7 +93,7 @@ export default function RouteScreen() {
         .eq('farrier_id', profile.id)
         .gte('proposed_date', today.toISOString())
         .lt('proposed_date', tomorrow.toISOString())
-        .in('status', ['confirmed', 'in_progress', 'completed'])
+        .in('status', ['confirmed', 'in_progress'])
         .order('sequence_order', { ascending: true });
 
       if (error) throw error;
@@ -94,11 +114,20 @@ export default function RouteScreen() {
 
       setStops(formattedStops);
 
-      const firstIncomplete = formattedStops.findIndex(
-        (s) => s.status !== 'completed'
-      );
-      if (firstIncomplete !== -1) {
-        setCurrentStopIndex(firstIncomplete);
+      if (formattedStops.length > 0 && mapRef.current) {
+        const validStops = formattedStops.filter((s) => s.latitude && s.longitude);
+        if (validStops.length > 0) {
+          mapRef.current.fitToCoordinates(
+            validStops.map((s) => ({
+              latitude: s.latitude!,
+              longitude: s.longitude!,
+            })),
+            {
+              edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+              animated: true,
+            }
+          );
+        }
       }
     } catch (error) {
       console.error('Error loading route:', error);
@@ -107,13 +136,14 @@ export default function RouteScreen() {
     }
   }
 
-  function openGoogleMaps(stop: RouteStop) {
-    if (!stop.latitude || !stop.longitude) {
-      Alert.alert('Errore', 'Indirizzo non disponibile per questo cliente');
+  function openRouteInMaps() {
+    const nextStop = stops.find((s) => s.status !== 'completed');
+    if (!nextStop?.latitude || !nextStop?.longitude) {
+      Alert.alert('Errore', 'Indirizzo non disponibile per la prossima tappa');
       return;
     }
 
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${stop.latitude},${stop.longitude}&travelmode=driving`;
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${nextStop.latitude},${nextStop.longitude}&travelmode=driving`;
     Linking.openURL(url).catch((err) => {
       console.error('Error opening Google Maps:', err);
       Alert.alert('Errore', 'Impossibile aprire Google Maps');
@@ -133,186 +163,194 @@ export default function RouteScreen() {
 
       if (error) throw error;
 
-      setStops((prev) =>
-        prev.map((s) => (s.id === stopId ? { ...s, status: 'completed' } : s))
-      );
+      setStops((prev) => prev.filter((s) => s.id !== stopId));
 
-      if (currentStopIndex < stops.length - 1) {
-        setCurrentStopIndex(currentStopIndex + 1);
+      const remainingStops = stops.filter((s) => s.id !== stopId && s.latitude && s.longitude);
+      if (remainingStops.length > 0 && mapRef.current) {
+        setTimeout(() => {
+          mapRef.current?.fitToCoordinates(
+            remainingStops.map((s) => ({
+              latitude: s.latitude!,
+              longitude: s.longitude!,
+            })),
+            {
+              edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+              animated: true,
+            }
+          );
+        }, 300);
       }
     } catch (error) {
       console.error('Error marking stop as completed:', error);
+      Alert.alert('Errore', 'Impossibile completare la tappa');
     }
   }
 
-  async function handleOptimizeRoute() {
-    if (!profile) return;
-    if (stops.length === 0) {
-      Alert.alert('Nessuna Tappa', 'Non ci sono tappe da ottimizzare per oggi');
-      return;
-    }
+  function handleStopPress(stopId: string) {
+    setSelectedStopId(stopId);
+  }
 
-    setOptimizing(true);
-    try {
-      const today = new Date();
-      const dateString = today.toISOString().split('T')[0];
-      const result = await getOptimizedRoute(profile.id, dateString);
+  const getMarkerColor = (stop: RouteStop, index: number) => {
+    if (index === 0) return '#4CAF50';
+    if (selectedStopId === stop.id) return '#007AFF';
+    return '#FF5722';
+  };
 
-      setOptimizedRoute(result);
-
-      if (result.steps && result.steps.length > 0) {
-        const reorderedStops = result.order.map((idx) => stops[idx]);
-        setStops(reorderedStops);
-
-        Alert.alert(
-          'Percorso Ottimizzato',
-          `Tempo stimato totale: ${result.total_estimated_minutes} minuti\n\nOrdine ottimizzato applicato!`
-        );
+  const initialRegion = stops.length > 0 && stops[0].latitude && stops[0].longitude
+    ? {
+        latitude: stops[0].latitude,
+        longitude: stops[0].longitude,
+        latitudeDelta: 0.1,
+        longitudeDelta: 0.1,
       }
-    } catch (error) {
-      console.error('Error optimizing route:', error);
-      Alert.alert('Errore', 'Impossibile ottimizzare il percorso');
-    } finally {
-      setOptimizing(false);
-    }
+    : {
+        latitude: 45.4642,
+        longitude: 9.19,
+        latitudeDelta: 0.5,
+        longitudeDelta: 0.5,
+      };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.centerContent}>
+          <ActivityIndicator size="large" color={Colors.silver} />
+        </View>
+      </SafeAreaView>
+    );
   }
 
-  const currentStop = stops[currentStopIndex];
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <View>
-            <Text style={styles.headerTitle}>Percorso di Oggi</Text>
-            <Text style={styles.headerSubtitle}>
-              {stops.filter((s) => s.status === 'completed').length} di{' '}
-              {stops.length} completati
-            </Text>
-          </View>
-          {stops.length > 0 && (
-            <TouchableOpacity
-              style={[styles.optimizeButton, optimizing && styles.optimizeButtonDisabled]}
-              onPress={handleOptimizeRoute}
-              disabled={optimizing}
-            >
-              <Sparkles size={16} color="#007AFF" />
-              <Text style={styles.optimizeButtonText}>
-                {optimizing ? 'Ottimizzazione...' : 'Ottimizza'}
-              </Text>
-            </TouchableOpacity>
-          )}
+  if (stops.length === 0) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Percorso di Oggi</Text>
         </View>
-      </View>
-
-      {loading ? (
-        <View style={styles.centerContent}>
-          <ActivityIndicator size="large" color="#007AFF" />
-        </View>
-      ) : stops.length === 0 ? (
         <View style={styles.centerContent}>
           <MapPin size={48} color="#CCC" />
           <Text style={styles.emptyText}>Nessuna tappa programmata per oggi</Text>
         </View>
-      ) : (
-        <View style={styles.content}>
-          {currentStop && currentStop.status !== 'completed' && (
-            <View style={styles.currentStopCard}>
-              <View style={styles.currentStopHeader}>
-                <Text style={styles.currentStopLabel}>TAPPA CORRENTE</Text>
-                <Text style={styles.currentStopNumber}>
-                  #{currentStopIndex + 1}
-                </Text>
-              </View>
-              <Text style={styles.currentStopName}>
-                {currentStop.customer_name}
-              </Text>
-              <Text style={styles.currentStopAddress}>
-                {currentStop.address}
-                {currentStop.city && `, ${currentStop.city}`}
-              </Text>
-              <Text style={styles.currentStopMeta}>
-                {currentStop.num_horses}{' '}
-                {currentStop.num_horses === 1 ? 'cavallo' : 'cavalli'} •{' '}
-                {new Date(currentStop.proposed_date).toLocaleTimeString(
-                  'it-IT',
-                  {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  }
-                )}
-              </Text>
+      </SafeAreaView>
+    );
+  }
 
-              <View style={styles.currentStopActions}>
-                <TouchableOpacity
-                  style={styles.navigateButton}
-                  onPress={() => openGoogleMaps(currentStop)}
-                  disabled={!currentStop.latitude || !currentStop.longitude}
-                >
-                  <Navigation size={20} color="#FFF" />
-                  <Text style={styles.navigateButtonText}>Apri su Google Maps</Text>
-                </TouchableOpacity>
-                {currentStop.phone && (
-                  <TouchableOpacity
-                    style={styles.callButton}
-                    onPress={() => callCustomer(currentStop.phone!)}
-                  >
-                    <Phone size={20} color="#007AFF" />
-                  </TouchableOpacity>
-                )}
-              </View>
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Percorso di Oggi</Text>
+        <Text style={styles.headerSubtitle}>{stops.length} tappe rimanenti</Text>
+      </View>
 
-              <TouchableOpacity
-                style={styles.completeButton}
-                onPress={() => markCompleted(currentStop.id)}
-              >
-                <CheckCircle size={20} color="#FFF" />
-                <Text style={styles.completeButtonText}>Segna come Completato</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          <Text style={styles.sectionTitle}>Tutte le Tappe</Text>
-          <ScrollView style={styles.stopsList}>
+      <View style={styles.dualView}>
+        <View style={styles.listContainer}>
+          <ScrollView showsVerticalScrollIndicator={false}>
             {stops.map((stop, index) => (
-              <View
+              <TouchableOpacity
                 key={stop.id}
                 style={[
                   styles.stopCard,
-                  stop.status === 'completed' && styles.stopCardCompleted,
-                  index === currentStopIndex && styles.stopCardCurrent,
+                  selectedStopId === stop.id && styles.stopCardSelected,
+                  index === 0 && styles.stopCardNext,
                 ]}
+                onPress={() => handleStopPress(stop.id)}
               >
-                <View style={styles.stopNumber}>
-                  {stop.status === 'completed' ? (
-                    <CheckCircle size={20} color="#4CAF50" />
-                  ) : (
+                <View style={styles.stopHeader}>
+                  <View style={styles.stopNumberBadge}>
                     <Text style={styles.stopNumberText}>{index + 1}</Text>
+                  </View>
+                  <View style={styles.stopMainInfo}>
+                    <Text style={styles.stopName}>{stop.customer_name}</Text>
+                    <Text style={styles.stopAddress}>
+                      {stop.address}
+                      {stop.city && `, ${stop.city}`}
+                    </Text>
+                    <View style={styles.stopMetaRow}>
+                      <Text style={styles.stopMeta}>
+                        {stop.num_horses} {stop.num_horses === 1 ? 'cavallo' : 'cavalli'}
+                      </Text>
+                      <Text style={styles.stopTime}>
+                        {new Date(stop.proposed_date).toLocaleTimeString('it-IT', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={styles.stopActions}>
+                  {stop.phone && (
+                    <TouchableOpacity
+                      style={styles.iconButton}
+                      onPress={() => callCustomer(stop.phone!)}
+                    >
+                      <Phone size={18} color={Colors.silver} />
+                    </TouchableOpacity>
                   )}
-                </View>
-                <View style={styles.stopInfo}>
-                  <Text
-                    style={[
-                      styles.stopName,
-                      stop.status === 'completed' && styles.stopNameCompleted,
-                    ]}
+                  <TouchableOpacity
+                    style={styles.completeButton}
+                    onPress={() => markCompleted(stop.id)}
                   >
-                    {stop.customer_name}
-                  </Text>
-                  <Text style={styles.stopAddress}>
-                    {stop.address}
-                    {stop.city && `, ${stop.city}`}
-                  </Text>
-                  <Text style={styles.stopMeta}>
-                    {stop.num_horses}{' '}
-                    {stop.num_horses === 1 ? 'cavallo' : 'cavalli'}
-                  </Text>
+                    <CheckCircle size={18} color="#FFF" />
+                    <Text style={styles.completeButtonText}>Completa</Text>
+                  </TouchableOpacity>
                 </View>
-              </View>
+              </TouchableOpacity>
             ))}
           </ScrollView>
         </View>
-      )}
+
+        <View style={styles.mapContainer}>
+          {isWeb ? (
+            <View style={styles.webMapPlaceholder}>
+              <MapPin size={48} color="#CCC" />
+              <Text style={styles.webMapText}>Mappa disponibile su mobile</Text>
+            </View>
+          ) : (
+            <>
+              <MapView
+                ref={mapRef}
+                style={styles.map}
+                provider={PROVIDER_GOOGLE}
+                initialRegion={initialRegion}
+                showsUserLocation
+                showsMyLocationButton
+              >
+                {stops.map((stop, index) => {
+                  if (!stop.latitude || !stop.longitude) return null;
+                  return (
+                    <Marker
+                      key={stop.id}
+                      coordinate={{
+                        latitude: stop.latitude,
+                        longitude: stop.longitude,
+                      }}
+                      pinColor={getMarkerColor(stop, index)}
+                      onPress={() => setSelectedStopId(stop.id)}
+                    >
+                      <View style={styles.markerContainer}>
+                        <View
+                          style={[
+                            styles.markerBadge,
+                            { backgroundColor: getMarkerColor(stop, index) },
+                          ]}
+                        >
+                          <Text style={styles.markerText}>{index + 1}</Text>
+                        </View>
+                      </View>
+                    </Marker>
+                  );
+                })}
+              </MapView>
+
+              <TouchableOpacity style={styles.openMapsButton} onPress={openRouteInMaps}>
+                <Navigation size={20} color="#FFF" />
+                <Text style={styles.openMapsText}>Apri percorso in Maps</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      </View>
     </SafeAreaView>
   );
 }
@@ -320,46 +358,22 @@ export default function RouteScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: Colors.background.primary,
   },
   header: {
-    backgroundColor: '#FFF',
+    backgroundColor: Colors.white,
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  optimizeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF',
-    borderWidth: 1,
-    borderColor: '#007AFF',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 6,
-  },
-  optimizeButtonDisabled: {
-    opacity: 0.6,
-  },
-  optimizeButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#007AFF',
+    borderBottomColor: Colors.border.light,
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#333',
+    color: Colors.text.dark,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#666',
+    color: Colors.text.light,
     marginTop: 4,
   },
   centerContent: {
@@ -370,84 +384,112 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#999',
+    color: Colors.text.light,
     textAlign: 'center',
   },
-  content: {
+  dualView: {
     flex: 1,
+    flexDirection: 'row',
+  },
+  listContainer: {
+    flex: isWeb ? 0.5 : 0.45,
+    backgroundColor: Colors.background.primary,
     padding: 16,
   },
-  currentStopCard: {
-    backgroundColor: '#007AFF',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 6,
+  mapContainer: {
+    flex: isWeb ? 0.5 : 0.55,
+    position: 'relative',
   },
-  currentStopHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  map: {
+    flex: 1,
+  },
+  webMapPlaceholder: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F5F5F5',
+    gap: 12,
+  },
+  webMapText: {
+    fontSize: 16,
+    color: Colors.text.light,
+  },
+  stopCard: {
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    padding: 16,
     marginBottom: 12,
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
-  currentStopLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: 'rgba(255,255,255,0.8)',
-    letterSpacing: 1,
+  stopCardSelected: {
+    borderColor: Colors.silver,
+    backgroundColor: '#F0F7FF',
   },
-  currentStopNumber: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFF',
+  stopCardNext: {
+    borderColor: '#4CAF50',
+    backgroundColor: '#F1F8F4',
   },
-  currentStopName: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#FFF',
-    marginBottom: 8,
-  },
-  currentStopAddress: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.9)',
-    marginBottom: 8,
-  },
-  currentStopMeta: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-    marginBottom: 16,
-  },
-  currentStopActions: {
+  stopHeader: {
     flexDirection: 'row',
     gap: 12,
     marginBottom: 12,
   },
-  navigateButton: {
+  stopNumberBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.silver,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stopNumberText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.white,
+  },
+  stopMainInfo: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 8,
-    padding: 12,
-    gap: 8,
   },
-  navigateButtonText: {
-    color: '#FFF',
+  stopName: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: Colors.text.dark,
+    marginBottom: 4,
   },
-  callButton: {
-    width: 48,
-    height: 48,
-    backgroundColor: '#FFF',
+  stopAddress: {
+    fontSize: 14,
+    color: Colors.text.light,
+    marginBottom: 6,
+  },
+  stopMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  stopMeta: {
+    fontSize: 12,
+    color: Colors.text.light,
+  },
+  stopTime: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.silver,
+  },
+  stopActions: {
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'flex-end',
+  },
+  iconButton: {
+    width: 40,
+    height: 40,
     borderRadius: 8,
+    backgroundColor: Colors.background.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border.light,
   },
   completeButton: {
     flexDirection: 'row',
@@ -455,71 +497,58 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#4CAF50',
     borderRadius: 8,
-    padding: 12,
-    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 6,
   },
   completeButtonText: {
-    color: '#FFF',
-    fontSize: 16,
+    color: Colors.white,
+    fontSize: 14,
     fontWeight: '600',
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#333',
-    marginBottom: 12,
-  },
-  stopsList: {
-    flex: 1,
-  },
-  stopCard: {
-    flexDirection: 'row',
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+  markerContainer: {
     alignItems: 'center',
-    gap: 16,
   },
-  stopCardCompleted: {
-    opacity: 0.6,
-  },
-  stopCardCurrent: {
-    borderWidth: 2,
-    borderColor: '#007AFF',
-  },
-  stopNumber: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F5F5F5',
+  markerBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: Colors.white,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
-  stopNumberText: {
+  markerText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.white,
+  },
+  openMapsButton: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.silver,
+    borderRadius: 12,
+    padding: 16,
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  openMapsText: {
+    color: Colors.white,
     fontSize: 16,
     fontWeight: '700',
-    color: '#007AFF',
-  },
-  stopInfo: {
-    flex: 1,
-  },
-  stopName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
-  },
-  stopNameCompleted: {
-    textDecorationLine: 'line-through',
-  },
-  stopAddress: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 4,
-  },
-  stopMeta: {
-    fontSize: 12,
-    color: '#999',
   },
 });
