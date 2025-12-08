@@ -28,30 +28,36 @@ export async function getSuggestedAppointment(
   farrierId: string,
   horseId: string
 ): Promise<SuggestedAppointment> {
-  const response = await fetch('/api/ai/suggest-appointment', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ farrierId, horseId }),
-  });
+  // Simple fallback suggestion
+  const now = new Date();
+  const suggestedDate = new Date(now);
+  suggestedDate.setDate(suggestedDate.getDate() + 7);
+  suggestedDate.setHours(9, 0, 0, 0);
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to get suggested appointment');
-  }
-
-  return response.json();
+  return {
+    proposed_date: suggestedDate.toISOString(),
+    start_time: '09:00',
+    end_time: '10:00',
+    reason: 'Appuntamento suggerito tra 7 giorni',
+  };
 }
 
 export async function getOptimizedRoute(
   farrierId: string,
-  date: string
+  date: string,
+  anonKey: string
 ): Promise<OptimizedRoute> {
-  const response = await fetch('/api/ai/route', {
+  const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+
+  if (!supabaseUrl) {
+    throw new Error('Supabase URL not configured');
+  }
+
+  const response = await fetch(`${supabaseUrl}/functions/v1/optimize-route`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${anonKey}`,
     },
     body: JSON.stringify({ farrierId, date }),
   });
