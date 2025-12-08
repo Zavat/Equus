@@ -256,7 +256,7 @@ export default function RouteScreen() {
           {isWeb ? (
             <View style={styles.webMapPlaceholder}>
               <MapPin size={48} color="#CCC" />
-              <Text style={styles.webMapText}>Mappa disponibile su mobile</Text>
+              <Text style={styles.webMapText}>Map disabled in web preview</Text>
             </View>
           ) : (
             <>
@@ -281,6 +281,23 @@ export default function RouteScreen() {
                     />
                   ))}
               </MapView>
+
+              {selectedStopId && (
+                <View style={styles.markerInfoCard}>
+                  {(() => {
+                    const stop = stops.find((s) => s.id === selectedStopId);
+                    if (!stop) return null;
+                    return (
+                      <>
+                        <Text style={styles.markerInfoName}>{stop.customer_name}</Text>
+                        <Text style={styles.markerInfoDetail}>
+                          {stop.num_horses} {stop.num_horses === 1 ? 'cavallo' : 'cavalli'}
+                        </Text>
+                      </>
+                    );
+                  })()}
+                </View>
+              )}
 
               <TouchableOpacity style={styles.openMapsButton} onPress={openRouteInMaps}>
                 <Navigation size={20} color="#FFF" />
@@ -444,6 +461,30 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 14,
     fontWeight: '600',
+  },
+  markerInfoCard: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    right: 20,
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  markerInfoName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.text.dark,
+    marginBottom: 4,
+  },
+  markerInfoDetail: {
+    fontSize: 14,
+    color: Colors.text.light,
   },
   openMapsButton: {
     position: 'absolute',
