@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { Navigation, MapPin, Phone, CheckCircle } from 'lucide-react-native';
+import { Navigation, MapPin, Phone, CheckCircle, Route as RouteIcon } from 'lucide-react-native';
 import { Colors } from '@/constants/colors';
 
 // Conditional import for native platforms only
@@ -37,9 +37,29 @@ interface RouteStop {
   num_horses: number;
   sequence_order: number;
   status: string;
+  distance?: number;
 }
 
 const isWeb = Platform.OS === 'web';
+
+function calculateDistance(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
 
 export default function RouteScreen() {
   const { profile } = useAuth();
@@ -102,7 +122,31 @@ export default function RouteScreen() {
         status: apt.status,
       }));
 
-      setStops(formattedStops);
+      const stopsWithDistance = formattedStops.map((stop, index) => {
+        if (!stop.latitude || !stop.longitude) {
+          return { ...stop, distance: undefined };
+        }
+
+        if (index === 0) {
+          return { ...stop, distance: 0 };
+        }
+
+        const prevStop = formattedStops[index - 1];
+        if (!prevStop.latitude || !prevStop.longitude) {
+          return { ...stop, distance: undefined };
+        }
+
+        const distance = calculateDistance(
+          prevStop.latitude,
+          prevStop.longitude,
+          stop.latitude,
+          stop.longitude
+        );
+
+        return { ...stop, distance };
+      });
+
+      setStops(stopsWithDistance);
     } catch (error) {
       console.error('Error loading route:', error);
     } finally {
@@ -220,6 +264,18 @@ export default function RouteScreen() {
                       <Text style={styles.stopMeta}>
                         {stop.num_horses} {stop.num_horses === 1 ? 'cavallo' : 'cavalli'}
                       </Text>
+                      {stop.distance !== undefined && (
+                        <View style={styles.distanceContainer}>
+                          <RouteIcon size={12} color="#2196F3" />
+                          <Text style={styles.stopDistance}>
+                            {stop.distance === 0
+                              ? 'Partenza'
+                              : `${stop.distance.toFixed(1)} km`}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.stopTimeRow}>
                       <Text style={styles.stopTime}>
                         {new Date(stop.proposed_date).toLocaleTimeString('it-IT', {
                           hour: '2-digit',
@@ -351,10 +407,13 @@ const styles = StyleSheet.create({
     flex: isWeb ? 0.5 : 0.45,
     backgroundColor: Colors.background.primary,
     padding: 16,
+    borderRightWidth: 1,
+    borderRightColor: Colors.border.light,
   },
   mapContainer: {
     flex: isWeb ? 0.5 : 0.55,
     position: 'relative',
+    backgroundColor: '#F5F5F5',
   },
   map: {
     flex: 1,
@@ -422,10 +481,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 4,
   },
   stopMeta: {
     fontSize: 12,
     color: Colors.text.light,
+  },
+  distanceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  stopDistance: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#2196F3',
+  },
+  stopTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   stopTime: {
     fontSize: 12,
