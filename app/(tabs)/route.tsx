@@ -11,11 +11,19 @@ import {
   Alert,
   Platform,
 } from 'react-native';
-import { MapView, Marker } from 'expo-maps';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Navigation, MapPin, Phone, CheckCircle } from 'lucide-react-native';
 import { Colors } from '@/constants/colors';
+
+// Conditional import for native platforms only
+let MapView: any = null;
+let Marker: any = null;
+if (Platform.OS !== 'web') {
+  const expoMaps = require('expo-maps');
+  MapView = expoMaps.MapView;
+  Marker = expoMaps.Marker;
+}
 
 interface RouteStop {
   id: string;
