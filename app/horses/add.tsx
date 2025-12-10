@@ -75,38 +75,50 @@ export default function AddHorseScreen() {
     ]);
   }
 
-  async function uploadPhoto(horseId: string): Promise<string | null> {
-    if (!photoUri) return null;
-    setUploading(true);
-    try {
-      const response = await fetch(photoUri);
-      const blob = await response.blob();
-      const arrayBuffer = await blob.arrayBuffer();
-      const fileExt = photoUri.split('.').pop()?.toLowerCase() || 'jpg';
-      const fileName = `${horseId}-${Date.now()}.${fileExt}`;
-      const filePath = `horses/${fileName}`;
+ async function uploadPhoto(horseId: string): Promise<string | null> {
+  if (!photoUri) return null;
+  setUploading(true);
 
-      const { error: uploadError } = await supabase.storage
-        .from('horses')
-        .upload(filePath, arrayBuffer, {
-          contentType: `image/${fileExt}`,
-          upsert: false,
-        });
+  try {
+    // 1. Legge l'immagine come base64
+    const base64 = await FileSystem.readAsStringAsync(photoUri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
 
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('horses')
-        .getPublicUrl(filePath);
-
-      return publicUrl;
-    } catch (error) {
-      console.error('Error uploading photo:', error);
-      return null;
-    } finally {
-      setUploading(false);
+    // 2. Convertiamo Base64 → Uint8Array
+    const binary = atob(base64);
+    const array = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      array[i] = binary.charCodeAt(i);
     }
+
+    // 3. Prepara il nome file
+    const fileExt = photoUri.split(".").pop()?.toLowerCase() || "jpg";
+    const fileName = `${horseId}-${Date.now()}.${fileExt}`;
+    const filePath = `horses/${fileName}`;
+
+    // 4. Upload su Supabase
+    const { error: uploadError } = await supabase.storage
+      .from("horses")
+      .upload(filePath, array, {
+        contentType: `image/${fileExt}`,
+        upsert: false,
+      });
+
+    if (uploadError) throw uploadError;
+
+    // 5. Ottieni URL pubblico
+    const { data } = supabase.storage.from("horses").getPublicUrl(filePath);
+
+    return data.publicUrl;
+
+  } catch (error) {
+    console.error("Error uploading photo:", error);
+    return null;
+  } finally {
+    setUploading(false);
   }
+}
 
   async function handleSave() {
     if (!name.trim()) {
