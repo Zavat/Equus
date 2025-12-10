@@ -77,14 +77,28 @@ export default function AddHorseScreen() {
   }
 
   async function uploadPhoto(horseId: string): Promise<string | null> {
-    if (!photoUri) return null;
+    if (!photoUri) {
+      console.log('uploadPhoto: No photo URI provided');
+      return null;
+    }
+
+    console.log('uploadPhoto: Starting upload for horse:', horseId);
     setUploading(true);
 
     try {
       const photoUrl = await uploadImage(photoUri, horseId);
+
+      if (!photoUrl) {
+        console.error('uploadPhoto: uploadImage returned null');
+        Alert.alert('Upload Failed', 'Could not upload photo. Please try again.');
+        return null;
+      }
+
+      console.log('uploadPhoto: Upload successful, URL:', photoUrl);
       return photoUrl;
     } catch (error) {
-      console.error('Error uploading photo:', error);
+      console.error('uploadPhoto: Error during upload:', error);
+      Alert.alert('Upload Error', 'An error occurred while uploading the photo.');
       return null;
     } finally {
       setUploading(false);
