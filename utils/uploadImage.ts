@@ -1,4 +1,5 @@
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system';
+import { decode } from 'base64-arraybuffer';
 import { supabase } from '@/lib/supabase';
 
 export async function uploadImage(
@@ -6,49 +7,51 @@ export async function uploadImage(
   fileNamePrefix: string
 ): Promise<string | null> {
   if (!uri || uri.trim() === '') {
-    console.error('uploadImage: URI is empty or undefined');
+    console.warn('uploadImage: URI is empty or undefined');
     return null;
   }
 
-  console.log('uploadImage: Starting upload for URI:', uri);
+  // Se è già un URL http/https (già caricata su Supabase), non ha senso ricaricarla
+  if (uri.startsWith('http://') || uri.startsWith('https://')) {
+    console.log('uploadImage: URI is already a remote URL, returning as-is');
+    return uri;
+  }
 
   try {
-    const fileInfo = await FileSystem.getInfoAsync(uri);
-    console.log('uploadImage: File info:', fileInfo);
+    console.log('uploadImage: starting for', uri);
 
+    // (Opzionale ma utile per debugging)
+    const fileInfo = await FileSystem.getInfoAsync(uri);
     if (!fileInfo.exists) {
-      console.error('uploadImage: File does not exist at URI:', uri);
+      console.error('uploadImage: file does not exist at', uri);
       return null;
     }
 
+    // 1) Leggi il file come base64
     const base64 = await FileSystem.readAsStringAsync(uri, {
       encoding: FileSystem.EncodingType.Base64,
     });
 
     if (!base64 || base64.trim() === '') {
-      console.error('uploadImage: Base64 encoding failed or returned empty string');
+      console.error('uploadImage: base64 string is empty');
       return null;
     }
 
-    console.log('uploadImage: Base64 encoded successfully, length:', base64.length);
+    // 2) Base64 -> ArrayBuffer (compatibile con supabase-js)
+    const arrayBuffer = decode(base64);
 
-    const binary = atob(base64);
-    const array = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      array[i] = binary.charCodeAt(i);
-    }
+    // 3) Determina estensione (fallback jpg)
+    const extMatch = uri.match(/\.(\w+)(\?|$)/);
+    const fileExt = (extMatch?.[1] || 'jpg').toLowerCase();
 
-    console.log('uploadImage: Converted to Uint8Array, size:', array.length, 'bytes');
-
-    const fileExt = uri.split('.').pop()?.toLowerCase() || 'jpg';
     const fileName = `${fileNamePrefix}-${Date.now()}.${fileExt}`;
     const filePath = `horses/${fileName}`;
 
-    console.log('uploadImage: Uploading to Supabase Storage:', filePath);
+    console.log('uploadImage: uploading to', filePath);
 
-    const { error: uploadError } = await supabase.storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
       .from('horses')
-      .upload(filePath, array, {
+      .upload(filePath, arrayBuffer, {
         contentType: `image/${fileExt}`,
         upsert: false,
       });
@@ -58,19 +61,17 @@ export async function uploadImage(
       throw uploadError;
     }
 
-    console.log('uploadImage: Upload successful, getting public URL');
+    console.log('uploadImage: upload success', uploadData);
 
-    const { data } = supabase.storage.from('horses').getPublicUrl(filePath);
+    const { data: publicData } = supabase.storage
+      .from('horses')
+      .getPublicUrl(filePath);
 
-    console.log('uploadImage: Public URL obtained:', data.publicUrl);
+    console.log('uploadImage: public URL:', publicData.publicUrl);
 
-    return data.publicUrl;
+    return publicData.publicUrl ?? null;
   } catch (error) {
-    console.error('uploadImage: Error during upload process:', error);
-    if (error instanceof Error) {
-      console.error('uploadImage: Error message:', error.message);
-      console.error('uploadImage: Error stack:', error.stack);
-    }
+    console.error('uploadImage: error during upload:', error);
     return null;
   }
 }
