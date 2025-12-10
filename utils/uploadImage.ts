@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
 import { supabase } from '@/lib/supabase';
 
@@ -11,7 +11,6 @@ export async function uploadImage(
     return null;
   }
 
-  // Se è già un URL http/https (già caricata su Supabase), non ha senso ricaricarla
   if (uri.startsWith('http://') || uri.startsWith('https://')) {
     console.log('uploadImage: URI is already a remote URL, returning as-is');
     return uri;
@@ -20,14 +19,12 @@ export async function uploadImage(
   try {
     console.log('uploadImage: starting for', uri);
 
-    // (Opzionale ma utile per debugging)
     const fileInfo = await FileSystem.getInfoAsync(uri);
     if (!fileInfo.exists) {
       console.error('uploadImage: file does not exist at', uri);
       return null;
     }
 
-    // 1) Leggi il file come base64
     const base64 = await FileSystem.readAsStringAsync(uri, {
       encoding: FileSystem.EncodingType.Base64,
     });
@@ -37,20 +34,18 @@ export async function uploadImage(
       return null;
     }
 
-    // 2) Base64 -> ArrayBuffer (compatibile con supabase-js)
     const arrayBuffer = decode(base64);
 
-    // 3) Determina estensione (fallback jpg)
     const extMatch = uri.match(/\.(\w+)(\?|$)/);
     const fileExt = (extMatch?.[1] || 'jpg').toLowerCase();
 
     const fileName = `${fileNamePrefix}-${Date.now()}.${fileExt}`;
-    const filePath = `horses/${fileName}`;
+    const filePath = fileName;
 
     console.log('uploadImage: uploading to', filePath);
 
     const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('horses')
+      .from('horse-photos')
       .upload(filePath, arrayBuffer, {
         contentType: `image/${fileExt}`,
         upsert: false,
@@ -64,7 +59,7 @@ export async function uploadImage(
     console.log('uploadImage: upload success', uploadData);
 
     const { data: publicData } = supabase.storage
-      .from('horses')
+      .from('horse-photos')
       .getPublicUrl(filePath);
 
     console.log('uploadImage: public URL:', publicData.publicUrl);
