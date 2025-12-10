@@ -16,6 +16,7 @@ import { supabase } from '@/lib/supabase';
 import * as ImagePicker from 'expo-image-picker';
 import { Camera, X } from 'lucide-react-native';
 import { HorseSex } from '@/types/database';
+import { uploadImage } from '@/utils/uploadImage';
 
 export default function AddHorseScreen() {
   const { profile } = useAuth();
@@ -75,50 +76,20 @@ export default function AddHorseScreen() {
     ]);
   }
 
- async function uploadPhoto(horseId: string): Promise<string | null> {
-  if (!photoUri) return null;
-  setUploading(true);
+  async function uploadPhoto(horseId: string): Promise<string | null> {
+    if (!photoUri) return null;
+    setUploading(true);
 
-  try {
-    // 1. Legge l'immagine come base64
-    const base64 = await FileSystem.readAsStringAsync(photoUri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-
-    // 2. Convertiamo Base64 → Uint8Array
-    const binary = atob(base64);
-    const array = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      array[i] = binary.charCodeAt(i);
+    try {
+      const photoUrl = await uploadImage(photoUri, horseId);
+      return photoUrl;
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      return null;
+    } finally {
+      setUploading(false);
     }
-
-    // 3. Prepara il nome file
-    const fileExt = photoUri.split(".").pop()?.toLowerCase() || "jpg";
-    const fileName = `${horseId}-${Date.now()}.${fileExt}`;
-    const filePath = `horses/${fileName}`;
-
-    // 4. Upload su Supabase
-    const { error: uploadError } = await supabase.storage
-      .from("horses")
-      .upload(filePath, array, {
-        contentType: `image/${fileExt}`,
-        upsert: false,
-      });
-
-    if (uploadError) throw uploadError;
-
-    // 5. Ottieni URL pubblico
-    const { data } = supabase.storage.from("horses").getPublicUrl(filePath);
-
-    return data.publicUrl;
-
-  } catch (error) {
-    console.error("Error uploading photo:", error);
-    return null;
-  } finally {
-    setUploading(false);
   }
-}
 
   async function handleSave() {
     if (!name.trim()) {

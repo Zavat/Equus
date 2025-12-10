@@ -17,7 +17,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Camera, X, ChevronLeft } from 'lucide-react-native';
 import { HorseSex } from '@/types/database';
 import { Colors } from '@/constants/colors';
-import * as FileSystem from "expo-file-system";
+import { uploadImage } from '@/utils/uploadImage';
 
 interface HorseData {
   id: string;
@@ -138,55 +138,22 @@ export default function HorseDetailScreen() {
   }
 
   async function uploadPhoto(): Promise<string | null> {
-  // Se non hai cambiato foto, restituisci quella vecchia
-  if (!photoUri || photoUri === horse?.primary_photo_url) {
-    return horse?.primary_photo_url || null;
-  }
-
-  setUploading(true);
-
-  try {
-    // 1. Leggi file come base64
-    const base64 = await FileSystem.readAsStringAsync(photoUri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-
-    // 2. Converti base64 → Uint8Array
-    const binary = atob(base64);
-    const array = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      array[i] = binary.charCodeAt(i);
+    if (!photoUri || photoUri === horse?.primary_photo_url) {
+      return horse?.primary_photo_url || null;
     }
 
-    // 3. Estrai estensione
-    const fileExt = photoUri.split(".").pop()?.toLowerCase() || "jpg";
-    const fileName = `${id}-${Date.now()}.${fileExt}`;
-    const filePath = `horses/${fileName}`;
+    setUploading(true);
 
-    // 4. Upload su Supabase
-    const { error: uploadError } = await supabase.storage
-      .from("horses")
-      .upload(filePath, array, {
-        contentType: `image/${fileExt}`,
-        upsert: false,
-      });
-
-    if (uploadError) throw uploadError;
-
-    // 5. Ottieni URL pubblico
-    const { data } = supabase.storage
-      .from("horses")
-      .getPublicUrl(filePath);
-
-    return data.publicUrl;
-
-  } catch (error) {
-    console.error("Error uploading photo:", error);
-    return null;
-  } finally {
-    setUploading(false);
+    try {
+      const photoUrl = await uploadImage(photoUri, id as string);
+      return photoUrl;
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      return null;
+    } finally {
+      setUploading(false);
+    }
   }
-}
 
 
   async function handleSave() {
