@@ -103,21 +103,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            full_name: fullName,
+            role,
+            country: 'IT',
+            language: 'en',
+          },
+        },
       });
 
       if (authError) return { error: authError };
       if (!authData.user) return { error: new Error('No user returned') };
-
-      const { error: profileError } = await supabase.from('profiles').insert({
-        id: authData.user.id,
-        email,
-        full_name: fullName,
-        role,
-        country: 'IT',
-        language: 'en',
-      });
-
-      if (profileError) return { error: profileError };
 
       await loadProfile(authData.user.id);
 
