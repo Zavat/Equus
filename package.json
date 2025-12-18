@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "EXPO_NO_TELEMETRY=1 expo start",
-    "dev:tunnel": "EXPO_NO_TELEMETRY=1 expo start --tunnel --ios --android",
+    "dev:tunnel": "EXPO_NO_TELEMETRY=1 expo start --tunnel --no-web",
     "build:web": "expo export --platform web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit"
