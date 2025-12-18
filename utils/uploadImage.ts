@@ -57,7 +57,7 @@ export async function uploadImage(
     }
 
     console.log('uploadImage: upload success', uploadData);
-
+    console.log("bellllaaaaa ffraaaaaaaaaaaaaaaaaaaaaaaaaa");
     const { data: publicData } = supabase.storage
       .from('horse-photos')
       .getPublicUrl(filePath);
