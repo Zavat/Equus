@@ -44,20 +44,28 @@ function RootLayoutNav() {
       <Stack.Screen name="horses" />
       <Stack.Screen name="farrier" />
       <Stack.Screen name="stable" />
+      <Stack.Screen name="services" />
+      <Stack.Screen name="calendar" />
       <Stack.Screen name="+not-found" />
     </Stack>
   );
 }
 
-export default function RootLayout() {
+function InitializedApp() {
   useFrameworkReady();
 
   return (
+    <AuthProvider>
+      <RootLayoutNav />
+      <StatusBar style="auto" />
+    </AuthProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AuthProvider>
-        <RootLayoutNav />
-        <StatusBar style="auto" />
-      </AuthProvider>
+      <InitializedApp />
     </GestureHandlerRootView>
   );
 }
