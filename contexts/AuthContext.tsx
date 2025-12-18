@@ -131,8 +131,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       console.log('[AuthContext] User created:', authData.user.id);
 
-      // Wait a bit for the trigger to create the profile
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Wait for the trigger to potentially create the profile
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      // Check if profile exists
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', authData.user.id)
+        .maybeSingle();
+
+      // If no profile exists, create it manually
+      if (!existingProfile) {
+        console.log('[AuthContext] No profile found, creating manually');
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: authData.user.id,
+            email: email,
+            full_name: fullName,
+            role: role,
+            country: 'IT',
+            language: 'en',
+          });
+
+        if (profileError) {
+          console.error('[AuthContext] Profile creation error:', profileError);
+          return { error: profileError };
+        }
+        console.log('[AuthContext] Profile created manually');
+      } else {
+        console.log('[AuthContext] Profile already exists from trigger');
+      }
+
       await loadProfile(authData.user.id);
 
       console.log('[AuthContext] Signup completed successfully');
