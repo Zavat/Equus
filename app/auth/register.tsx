@@ -48,9 +48,9 @@ export default function RegisterScreen() {
         setError(signUpError.message);
         setLoading(false);
       } else {
-        console.log('[Register] Registration successful, waiting for navigation...');
-        // Success - navigation will be handled automatically by AuthContext
-        // Keep loading state until navigation occurs
+        console.log('[Register] Registration successful, navigating to app...');
+        // Registration successful, navigate to main app
+        router.replace('/(tabs)');
       }
     } catch (err) {
       console.error('[Register] Registration exception:', err);

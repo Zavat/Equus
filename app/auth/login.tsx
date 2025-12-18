@@ -37,6 +37,9 @@ export default function LoginScreen() {
     if (signInError) {
       setError(signInError.message);
       setLoading(false);
+    } else {
+      // Login successful, navigate to main app
+      router.replace('/(tabs)');
     }
   }
 
