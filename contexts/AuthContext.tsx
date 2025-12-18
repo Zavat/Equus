@@ -78,16 +78,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function loadProfile(userId: string) {
     try {
+      console.log('[AuthContext] Loading profile for user:', userId);
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[AuthContext] Error loading profile:', error);
+        throw error;
+      }
+
+      console.log('[AuthContext] Profile loaded:', data);
       setProfile(data);
     } catch (error) {
-      console.error('Error loading profile:', error);
+      console.error('[AuthContext] Failed to load profile:', error);
     } finally {
       setLoading(false);
     }
@@ -100,6 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     role: UserRole
   ) {
     try {
+      console.log('[AuthContext] Starting signup for:', email, 'with role:', role);
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -113,13 +120,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
       });
 
-      if (authError) return { error: authError };
-      if (!authData.user) return { error: new Error('No user returned') };
+      if (authError) {
+        console.error('[AuthContext] Signup error:', authError);
+        return { error: authError };
+      }
+      if (!authData.user) {
+        console.error('[AuthContext] No user returned from signup');
+        return { error: new Error('No user returned') };
+      }
 
+      console.log('[AuthContext] User created:', authData.user.id);
+
+      // Wait a bit for the trigger to create the profile
+      await new Promise(resolve => setTimeout(resolve, 1000));
       await loadProfile(authData.user.id);
 
+      console.log('[AuthContext] Signup completed successfully');
       return { error: null };
     } catch (error) {
+      console.error('[AuthContext] Signup exception:', error);
       return { error };
     }
   }

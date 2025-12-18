@@ -11,15 +11,26 @@ function RootLayoutNav() {
   const router = useRouter();
 
   useEffect(() => {
+    console.log('[RootLayout] Auth state:', {
+      loading,
+      hasUser: !!user,
+      hasProfile: !!profile,
+      profileRole: profile?.role,
+      segments: segments.join('/'),
+    });
+
     if (loading) return;
 
     const inAuthGroup = segments[0] === 'auth';
 
     if (!user && !inAuthGroup) {
+      console.log('[RootLayout] No user, redirecting to login');
       router.replace('/auth/login');
     } else if (user && profile && inAuthGroup) {
+      console.log('[RootLayout] User authenticated with profile, redirecting to tabs');
       router.replace('/(tabs)');
     } else if (user && !profile && !inAuthGroup) {
+      console.log('[RootLayout] User without profile, redirecting to login');
       router.replace('/auth/login');
     }
   }, [user, profile, loading, segments]);

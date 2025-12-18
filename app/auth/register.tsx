@@ -36,13 +36,25 @@ export default function RegisterScreen() {
       return;
     }
 
+    console.log('[Register] Starting registration for:', email, 'as', role);
     setLoading(true);
     setError('');
 
-    const { error: signUpError } = await signUp(email, password, fullName, role);
+    try {
+      const { error: signUpError } = await signUp(email, password, fullName, role);
 
-    if (signUpError) {
-      setError(signUpError.message);
+      if (signUpError) {
+        console.error('[Register] Registration failed:', signUpError);
+        setError(signUpError.message);
+        setLoading(false);
+      } else {
+        console.log('[Register] Registration successful, waiting for navigation...');
+        // Success - navigation will be handled automatically by AuthContext
+        // Keep loading state until navigation occurs
+      }
+    } catch (err) {
+      console.error('[Register] Registration exception:', err);
+      setError('An unexpected error occurred');
       setLoading(false);
     }
   }
