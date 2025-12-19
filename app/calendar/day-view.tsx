@@ -49,6 +49,7 @@ function DraggableAppointment({
   const startY = useSharedValue(initialTop);
 
   const panGesture = Gesture.Pan()
+    .enabled(isFarrier)
     .onStart(() => {
       startY.value = initialTop + translateY.value;
     })
@@ -76,7 +77,9 @@ function DraggableAppointment({
       runOnJS(onPress)();
     });
 
-  const composedGesture = Gesture.Simultaneous(panGesture, tapGesture);
+  const composedGesture = isFarrier
+    ? Gesture.Race(tapGesture, panGesture)
+    : tapGesture;
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
@@ -113,14 +116,14 @@ function DraggableAppointment({
         ]}
       >
         <Text style={styles.appointmentTime}>
-          {new Date(appointment.proposed_date).toLocaleTimeString('en-US', {
+          {new Date(appointment.proposed_date).toLocaleTimeString('it-IT', {
             hour: '2-digit',
             minute: '2-digit',
           })}
         </Text>
         <Text style={styles.appointmentName}>{displayName}</Text>
         <Text style={styles.appointmentHorses}>
-          {appointment.num_horses} {appointment.num_horses === 1 ? 'horse' : 'horses'}
+          {appointment.num_horses} {appointment.num_horses === 1 ? 'cavallo' : 'cavalli'}
         </Text>
       </Animated.View>
     </GestureDetector>
@@ -177,6 +180,12 @@ export default function DayViewScreen() {
   }
 
   async function handleAppointmentDragEnd(appointmentId: string, newDate: string) {
+    if (!isFarrier) {
+      Alert.alert('Non consentito', 'Solo il maniscalco può modificare gli orari degli appuntamenti');
+      await loadDayAppointments();
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('appointments')
@@ -192,11 +201,15 @@ export default function DayViewScreen() {
       );
     } catch (error) {
       console.error('Error updating appointment:', error);
-      Alert.alert('Error', 'Failed to update appointment time');
+      Alert.alert('Errore', 'Impossibile aggiornare l\'orario dell\'appuntamento');
     }
   }
 
   function handleLongPress(hour: number) {
+    if (!isFarrier) {
+      Alert.alert('Non consentito', 'Solo il maniscalco può creare nuovi appuntamenti');
+      return;
+    }
     const selectedDate = new Date(date as string);
     selectedDate.setHours(hour, 0, 0, 0);
     router.push(`/calendar/create-appointment?date=${date}&hour=${hour}`);
@@ -207,10 +220,10 @@ export default function DayViewScreen() {
   }
 
   const selectedDate = new Date(date as string);
-  const formattedDate = selectedDate.toLocaleDateString('en-US', {
+  const formattedDate = selectedDate.toLocaleDateString('it-IT', {
     weekday: 'long',
-    month: 'long',
     day: 'numeric',
+    month: 'long',
     year: 'numeric',
   });
 
@@ -223,12 +236,15 @@ export default function DayViewScreen() {
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>{formattedDate}</Text>
         </View>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => router.push(`/calendar/create-appointment?date=${date}`)}
-        >
-          <Plus size={24} color={Colors.white} />
-        </TouchableOpacity>
+        {isFarrier && (
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => router.push(`/calendar/create-appointment?date=${date}`)}
+          >
+            <Plus size={24} color={Colors.white} />
+          </TouchableOpacity>
+        )}
+        {!isFarrier && <View style={{ width: 40 }} />}
       </View>
 
       {loading ? (

@@ -103,6 +103,19 @@ export default function HomeScreen() {
       }));
 
       setAppointments(formattedAppointments);
+
+      const marked: MarkedDates = {};
+      data?.forEach((apt: any) => {
+        const date = apt.scheduled_date || apt.proposed_date;
+        if (date) {
+          const dateStr = date.split('T')[0];
+          marked[dateStr] = {
+            marked: true,
+            dotColor: Colors.silver,
+          };
+        }
+      });
+      setMarkedDates(marked);
     } catch (error) {
       console.error('Error loading appointments:', error);
     } finally {
@@ -421,12 +434,72 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        <AgendaView
-          appointments={appointments}
-          loading={loading}
-          onAppointmentPress={handleAppointmentPress}
-          emptyMessage="No appointments yet. Your farrier will propose appointments for you."
-        />
+        <ScrollView style={styles.scrollContent}>
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Calendar</Text>
+            </View>
+
+            <RNCalendar
+              style={styles.calendar}
+              markedDates={markedDates}
+              onDayPress={onDayPress}
+              theme={{
+                backgroundColor: Colors.white,
+                calendarBackground: Colors.white,
+                textSectionTitleColor: Colors.text.light,
+                selectedDayBackgroundColor: Colors.silver,
+                selectedDayTextColor: Colors.white,
+                todayTextColor: Colors.silver,
+                dayTextColor: Colors.text.dark,
+                textDisabledColor: Colors.text.light,
+                dotColor: Colors.silver,
+                selectedDotColor: Colors.white,
+                arrowColor: Colors.silver,
+                monthTextColor: Colors.text.dark,
+                indicatorColor: Colors.silver,
+                textDayFontFamily: 'System',
+                textMonthFontFamily: 'System',
+                textDayHeaderFontFamily: 'System',
+                textDayFontWeight: '400',
+                textMonthFontWeight: '700',
+                textDayHeaderFontWeight: '600',
+                textDayFontSize: 16,
+                textMonthFontSize: 18,
+                textDayHeaderFontSize: 13,
+              }}
+              enableSwipeMonths
+            />
+          </View>
+
+          {appointments.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Upcoming Appointments</Text>
+              </View>
+              {appointments.slice(0, 5).map((apt) => (
+                <TouchableOpacity
+                  key={apt.id}
+                  style={styles.appointmentCard}
+                  onPress={() => handleAppointmentPress(apt)}
+                >
+                  <View style={styles.appointmentInfo}>
+                    <Text style={styles.appointmentCustomer}>{apt.farrier_name}</Text>
+                    <Text style={styles.appointmentDate}>
+                      {new Date(apt.proposed_date).toLocaleDateString()}
+                    </Text>
+                  </View>
+                  <View style={styles.appointmentDetails}>
+                    <Text style={styles.appointmentHorses}>{apt.num_horses} horse(s)</Text>
+                    <Text style={[styles.appointmentStatus, { color: Colors.silver }]}>
+                      {apt.status}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </ScrollView>
       </SafeAreaView>
     );
   }
