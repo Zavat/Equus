@@ -164,6 +164,72 @@ export default function RouteScreen() {
     });
   }
 
+  function openInAppleMaps() {
+    if (stops.length === 0) {
+      Alert.alert('Errore', 'Nessuna tappa disponibile');
+      return;
+    }
+
+    const validStops = stops.filter((s) => s.latitude && s.longitude);
+    if (validStops.length === 0) {
+      Alert.alert('Errore', 'Nessun indirizzo disponibile');
+      return;
+    }
+
+    const lastStop = validStops[validStops.length - 1];
+    const url = `http://maps.apple.com/?daddr=${lastStop.latitude},${lastStop.longitude}&dirflg=d`;
+
+    Linking.openURL(url).catch((err) => {
+      console.error('Error opening Apple Maps:', err);
+      Alert.alert('Errore', 'Impossibile aprire Apple Maps');
+    });
+  }
+
+  function openInGoogleMaps() {
+    if (stops.length === 0) {
+      Alert.alert('Errore', 'Nessuna tappa disponibile');
+      return;
+    }
+
+    const validStops = stops.filter((s) => s.latitude && s.longitude);
+    if (validStops.length === 0) {
+      Alert.alert('Errore', 'Nessun indirizzo disponibile');
+      return;
+    }
+
+    const waypoints = validStops
+      .map((stop) => `${stop.latitude},${stop.longitude}`)
+      .join('|');
+
+    const url = `https://www.google.com/maps/dir/?api=1&waypoints=${waypoints}&travelmode=driving`;
+    Linking.openURL(url).catch((err) => {
+      console.error('Error opening Google Maps:', err);
+      Alert.alert('Errore', 'Impossibile aprire Google Maps');
+    });
+  }
+
+  function chooseMapsApp() {
+    Alert.alert(
+      'Apri in Mappe',
+      'Quale app vuoi usare?',
+      [
+        {
+          text: 'Apple Maps',
+          onPress: openInAppleMaps,
+        },
+        {
+          text: 'Google Maps',
+          onPress: openInGoogleMaps,
+        },
+        {
+          text: 'Annulla',
+          style: 'cancel',
+        },
+      ],
+      { cancelable: true }
+    );
+  }
+
   function callCustomer(phone: string) {
     Linking.openURL(`tel:${phone}`);
   }
@@ -204,6 +270,12 @@ export default function RouteScreen() {
           <MapPin size={48} color="#CCC" />
           <Text style={styles.emptyText}>Nessuna tappa programmata per oggi</Text>
         </View>
+        <View style={styles.bottomButtonContainer}>
+          <TouchableOpacity style={styles.bottomButton} onPress={chooseMapsApp}>
+            <MapPin size={24} color="#FFF" />
+            <Text style={styles.bottomButtonText}>Apri in Mappe</Text>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
     );
   }
@@ -220,7 +292,11 @@ export default function RouteScreen() {
         <Text style={styles.openMapsText}>Apri Percorso in Google Maps</Text>
       </TouchableOpacity>
 
-      <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollContainer}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {stops.map((stop, index) => (
           <View
             key={stop.id}
@@ -285,6 +361,13 @@ export default function RouteScreen() {
           </View>
         ))}
       </ScrollView>
+
+      <View style={styles.bottomButtonContainer}>
+        <TouchableOpacity style={styles.bottomButton} onPress={chooseMapsApp}>
+          <MapPin size={24} color="#FFF" />
+          <Text style={styles.bottomButtonText}>Apri in Mappe</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -327,7 +410,10 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flex: 1,
+  },
+  scrollContent: {
     padding: 16,
+    paddingBottom: 100,
   },
   centerContent: {
     flex: 1,
@@ -446,6 +532,36 @@ const styles = StyleSheet.create({
   openMapsText: {
     color: Colors.white,
     fontSize: 16,
+    fontWeight: '700',
+  },
+  bottomButtonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: Colors.background.primary,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border.light,
+  },
+  bottomButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.silver,
+    borderRadius: 12,
+    paddingVertical: 16,
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  bottomButtonText: {
+    color: Colors.white,
+    fontSize: 18,
     fontWeight: '700',
   },
 });
