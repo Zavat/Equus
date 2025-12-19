@@ -165,19 +165,15 @@ export default function RouteScreen() {
   }
 
   function openInAppleMaps() {
-    if (stops.length === 0) {
-      Alert.alert('Errore', 'Nessuna tappa disponibile');
-      return;
-    }
-
     const validStops = stops.filter((s) => s.latitude && s.longitude);
-    if (validStops.length === 0) {
-      Alert.alert('Errore', 'Nessun indirizzo disponibile');
-      return;
-    }
 
-    const lastStop = validStops[validStops.length - 1];
-    const url = `http://maps.apple.com/?daddr=${lastStop.latitude},${lastStop.longitude}&dirflg=d`;
+    let url: string;
+    if (validStops.length === 0) {
+      url = 'http://maps.apple.com/';
+    } else {
+      const lastStop = validStops[validStops.length - 1];
+      url = `http://maps.apple.com/?daddr=${lastStop.latitude},${lastStop.longitude}&dirflg=d`;
+    }
 
     Linking.openURL(url).catch((err) => {
       console.error('Error opening Apple Maps:', err);
@@ -186,22 +182,18 @@ export default function RouteScreen() {
   }
 
   function openInGoogleMaps() {
-    if (stops.length === 0) {
-      Alert.alert('Errore', 'Nessuna tappa disponibile');
-      return;
-    }
-
     const validStops = stops.filter((s) => s.latitude && s.longitude);
+
+    let url: string;
     if (validStops.length === 0) {
-      Alert.alert('Errore', 'Nessun indirizzo disponibile');
-      return;
+      url = 'https://www.google.com/maps/';
+    } else {
+      const waypoints = validStops
+        .map((stop) => `${stop.latitude},${stop.longitude}`)
+        .join('|');
+      url = `https://www.google.com/maps/dir/?api=1&waypoints=${waypoints}&travelmode=driving`;
     }
 
-    const waypoints = validStops
-      .map((stop) => `${stop.latitude},${stop.longitude}`)
-      .join('|');
-
-    const url = `https://www.google.com/maps/dir/?api=1&waypoints=${waypoints}&travelmode=driving`;
     Linking.openURL(url).catch((err) => {
       console.error('Error opening Google Maps:', err);
       Alert.alert('Errore', 'Impossibile aprire Google Maps');
