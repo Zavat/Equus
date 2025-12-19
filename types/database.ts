@@ -42,6 +42,7 @@ export interface Database {
           stripe_customer_id: string | null;
           language: string;
           tax_id: string | null;
+          preferred_maps_app: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -60,6 +61,7 @@ export interface Database {
           stripe_customer_id?: string | null;
           language?: string;
           tax_id?: string | null;
+          preferred_maps_app?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -78,6 +80,7 @@ export interface Database {
           stripe_customer_id?: string | null;
           language?: string;
           tax_id?: string | null;
+          preferred_maps_app?: string | null;
           created_at?: string;
           updated_at?: string;
         };

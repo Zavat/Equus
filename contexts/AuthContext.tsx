@@ -18,6 +18,7 @@ interface Profile {
   stripe_customer_id: string | null;
   language: string;
   tax_id: string | null;
+  preferred_maps_app: string | null;
 }
 
 interface AuthContextType {

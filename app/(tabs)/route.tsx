@@ -200,18 +200,42 @@ export default function RouteScreen() {
     });
   }
 
-  function chooseMapsApp() {
+  async function saveMapPreference(preference: 'google' | 'apple') {
+    if (!profile?.id) return;
+
+    await supabase
+      .from('profiles')
+      .update({ preferred_maps_app: preference })
+      .eq('id', profile.id);
+  }
+
+  async function chooseMapsApp() {
+    if (profile?.preferred_maps_app) {
+      if (profile.preferred_maps_app === 'apple') {
+        openInAppleMaps();
+      } else {
+        openInGoogleMaps();
+      }
+      return;
+    }
+
     Alert.alert(
       'Apri in Mappe',
       'Quale app vuoi usare?',
       [
         {
           text: 'Apple Maps',
-          onPress: openInAppleMaps,
+          onPress: () => {
+            saveMapPreference('apple');
+            openInAppleMaps();
+          },
         },
         {
           text: 'Google Maps',
-          onPress: openInGoogleMaps,
+          onPress: () => {
+            saveMapPreference('google');
+            openInGoogleMaps();
+          },
         },
         {
           text: 'Annulla',
