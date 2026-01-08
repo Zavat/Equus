@@ -1,0 +1,101 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "search": "Search",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "done": "Done",
+    "yes": "Yes",
+    "no": "No",
+    "ok": "OK"
+  },
+  "auth": {
+    "login": "Login",
+    "register": "Register",
+    "logout": "Sign Out",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "fullName": "Full Name",
+    "forgotPassword": "Forgot Password?",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?",
+    "signUp": "Sign Up",
+    "signIn": "Sign In"
+  },
+  "profile": {
+    "title": "Profile",
+    "accountInfo": "Account Information",
+    "quickActions": "Quick Actions",
+    "editProfile": "Edit Profile",
+    "managePriceLists": "Manage Price Lists",
+    "invitations": "Invitations",
+    "myHorses": "My Horses",
+    "manageConsents": "Manage Consents",
+    "languageRegion": "Language & Region",
+    "phone": "Phone",
+    "address": "Address",
+    "signOutConfirm": "Are you sure you want to sign out?"
+  },
+  "language": {
+    "title": "Language & Region",
+    "language": "Language",
+    "country": "Country",
+    "searchLanguages": "Search languages...",
+    "searchCountries": "Search countries...",
+    "selectLanguage": "Select Language",
+    "selectCountry": "Select Country",
+    "useDeviceLanguage": "Use device language",
+    "useDeviceLanguageDesc": "Automatically use your device's language setting",
+    "saveChanges": "Save Changes",
+    "settingsUpdated": "Settings updated successfully",
+    "settingsError": "Failed to update settings"
+  },
+  "calendar": {
+    "title": "Calendar",
+    "today": "Today",
+    "noAppointments": "No appointments",
+    "addAppointment": "Add Appointment"
+  },
+  "customers": {
+    "title": "Customers",
+    "noCustomers": "No customers yet",
+    "addCustomer": "Add Customer"
+  },
+  "services": {
+    "title": "Services",
+    "noServices": "No services yet"
+  },
+  "payments": {
+    "title": "Payments",
+    "noPayments": "No payments yet"
+  },
+  "route": {
+    "title": "Route",
+    "optimize": "Optimize Route",
+    "noStops": "No stops planned"
+  },
+  "horses": {
+    "title": "Horses",
+    "myHorses": "My Horses",
+    "addHorse": "Add Horse",
+    "noHorses": "No horses yet"
+  },
+  "tabs": {
+    "home": "Home",
+    "calendar": "Calendar",
+    "customers": "Customers",
+    "services": "Services",
+    "payments": "Payments",
+    "route": "Route",
+    "profile": "Profile"
+  }
+}

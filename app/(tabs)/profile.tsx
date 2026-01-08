@@ -8,6 +8,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   User,
@@ -19,10 +20,12 @@ import {
   CreditCard,
   Users,
   Inbox,
+  Globe,
 } from 'lucide-react-native';
 import { Colors } from '@/constants/colors';
 
 export default function ProfileScreen() {
+  const { t } = useTranslation();
   const { profile, signOut, isFarrier, isStable, isOwner } = useAuth();
   const router = useRouter();
 
@@ -34,7 +37,7 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Profile</Text>
+        <Text style={styles.headerTitle}>{t('profile.title')}</Text>
       </View>
 
       <ScrollView style={styles.content}>
@@ -53,12 +56,12 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account Information</Text>
+          <Text style={styles.sectionTitle}>{t('profile.accountInfo')}</Text>
 
           <View style={styles.infoItem}>
             <Mail size={20} color="#666" />
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Email</Text>
+              <Text style={styles.infoLabel}>{t('auth.email')}</Text>
               <Text style={styles.infoValue}>{profile?.email}</Text>
             </View>
           </View>
@@ -67,7 +70,7 @@ export default function ProfileScreen() {
             <View style={styles.infoItem}>
               <Phone size={20} color="#666" />
               <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Phone</Text>
+                <Text style={styles.infoLabel}>{t('profile.phone')}</Text>
                 <Text style={styles.infoValue}>{profile.phone}</Text>
               </View>
             </View>
@@ -77,7 +80,7 @@ export default function ProfileScreen() {
             <View style={styles.infoItem}>
               <MapPin size={20} color="#666" />
               <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Address</Text>
+                <Text style={styles.infoLabel}>{t('profile.address')}</Text>
                 <Text style={styles.infoValue}>
                   {profile.address}
                   {profile.city && `, ${profile.city}`}
@@ -88,14 +91,14 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <Text style={styles.sectionTitle}>{t('profile.quickActions')}</Text>
 
           <TouchableOpacity
             style={styles.actionItem}
-            onPress={() => router.push('/profile/edit')}
+            onPress={() => router.push('/profile/language-country')}
           >
-            <Settings size={20} color={Colors.silver} />
-            <Text style={styles.actionText}>Edit Profile</Text>
+            <Globe size={20} color={Colors.silver} />
+            <Text style={styles.actionText}>{t('profile.languageRegion')}</Text>
           </TouchableOpacity>
 
           {isFarrier && (
@@ -104,7 +107,7 @@ export default function ProfileScreen() {
               onPress={() => router.push('/farrier/price-lists')}
             >
               <CreditCard size={20} color={Colors.silver} />
-              <Text style={styles.actionText}>Manage Price Lists</Text>
+              <Text style={styles.actionText}>{t('profile.managePriceLists')}</Text>
             </TouchableOpacity>
           )}
 
@@ -114,7 +117,7 @@ export default function ProfileScreen() {
               onPress={() => router.push('/horses/invitations')}
             >
               <Inbox size={20} color={Colors.silver} />
-              <Text style={styles.actionText}>Invitations</Text>
+              <Text style={styles.actionText}>{t('profile.invitations')}</Text>
             </TouchableOpacity>
           )}
 
@@ -124,7 +127,7 @@ export default function ProfileScreen() {
               onPress={() => router.push('/horses')}
             >
               <Users size={20} color={Colors.silver} />
-              <Text style={styles.actionText}>My Horses</Text>
+              <Text style={styles.actionText}>{t('profile.myHorses')}</Text>
             </TouchableOpacity>
           )}
 
@@ -134,7 +137,7 @@ export default function ProfileScreen() {
               onPress={() => router.push('/stable/consents')}
             >
               <Users size={20} color={Colors.silver} />
-              <Text style={styles.actionText}>Manage Consents</Text>
+              <Text style={styles.actionText}>{t('profile.manageConsents')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -144,7 +147,7 @@ export default function ProfileScreen() {
           onPress={handleSignOut}
         >
           <LogOut size={20} color={Colors.status.error} />
-          <Text style={styles.signOutText}>Sign Out</Text>
+          <Text style={styles.signOutText}>{t('auth.logout')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>

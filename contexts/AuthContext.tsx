@@ -19,6 +19,7 @@ interface Profile {
   language: string;
   tax_id: string | null;
   preferred_maps_app: string | null;
+  use_device_language: boolean;
 }
 
 interface AuthContextType {
@@ -154,6 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             role: role,
             country: 'IT',
             language: 'en',
+            use_device_language: true,
           });
 
         if (profileError) {

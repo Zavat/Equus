@@ -3,7 +3,9 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { LocaleProvider, useLocale } from '@/contexts/LocaleContext';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import '@/lib/i18n';
 
 function RootLayoutNav() {
   const { user, profile, loading } = useAuth();
@@ -46,6 +48,7 @@ function RootLayoutNav() {
       <Stack.Screen name="stable" />
       <Stack.Screen name="services" />
       <Stack.Screen name="calendar" />
+      <Stack.Screen name="profile" />
       <Stack.Screen name="+not-found" />
     </Stack>
   );
@@ -55,10 +58,12 @@ function InitializedApp() {
   useFrameworkReady();
 
   return (
-    <AuthProvider>
-      <RootLayoutNav />
-      <StatusBar style="auto" />
-    </AuthProvider>
+    <LocaleProvider>
+      <AuthProvider>
+        <RootLayoutNav />
+        <StatusBar style="auto" />
+      </AuthProvider>
+    </LocaleProvider>
   );
 }
 

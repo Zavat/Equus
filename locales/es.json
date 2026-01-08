@@ -1,0 +1,101 @@
+{
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "close": "Cerrar",
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Exito",
+    "search": "Buscar",
+    "confirm": "Confirmar",
+    "back": "Atras",
+    "next": "Siguiente",
+    "done": "Hecho",
+    "yes": "Si",
+    "no": "No",
+    "ok": "OK"
+  },
+  "auth": {
+    "login": "Iniciar sesion",
+    "register": "Registrarse",
+    "logout": "Cerrar sesion",
+    "email": "Correo electronico",
+    "password": "Contrasena",
+    "confirmPassword": "Confirmar contrasena",
+    "fullName": "Nombre completo",
+    "forgotPassword": "Olvidaste tu contrasena?",
+    "noAccount": "No tienes cuenta?",
+    "hasAccount": "Ya tienes cuenta?",
+    "signUp": "Registrarse",
+    "signIn": "Iniciar sesion"
+  },
+  "profile": {
+    "title": "Perfil",
+    "accountInfo": "Informacion de cuenta",
+    "quickActions": "Acciones rapidas",
+    "editProfile": "Editar perfil",
+    "managePriceLists": "Gestionar listas de precios",
+    "invitations": "Invitaciones",
+    "myHorses": "Mis caballos",
+    "manageConsents": "Gestionar consentimientos",
+    "languageRegion": "Idioma y Region",
+    "phone": "Telefono",
+    "address": "Direccion",
+    "signOutConfirm": "Estas seguro de que quieres cerrar sesion?"
+  },
+  "language": {
+    "title": "Idioma y Region",
+    "language": "Idioma",
+    "country": "Pais",
+    "searchLanguages": "Buscar idiomas...",
+    "searchCountries": "Buscar paises...",
+    "selectLanguage": "Seleccionar idioma",
+    "selectCountry": "Seleccionar pais",
+    "useDeviceLanguage": "Usar idioma del dispositivo",
+    "useDeviceLanguageDesc": "Usar automaticamente el idioma del dispositivo",
+    "saveChanges": "Guardar cambios",
+    "settingsUpdated": "Configuracion actualizada",
+    "settingsError": "Error al actualizar"
+  },
+  "calendar": {
+    "title": "Calendario",
+    "today": "Hoy",
+    "noAppointments": "Sin citas",
+    "addAppointment": "Agregar cita"
+  },
+  "customers": {
+    "title": "Clientes",
+    "noCustomers": "Sin clientes",
+    "addCustomer": "Agregar cliente"
+  },
+  "services": {
+    "title": "Servicios",
+    "noServices": "Sin servicios"
+  },
+  "payments": {
+    "title": "Pagos",
+    "noPayments": "Sin pagos"
+  },
+  "route": {
+    "title": "Ruta",
+    "optimize": "Optimizar ruta",
+    "noStops": "Sin paradas planificadas"
+  },
+  "horses": {
+    "title": "Caballos",
+    "myHorses": "Mis caballos",
+    "addHorse": "Agregar caballo",
+    "noHorses": "Sin caballos"
+  },
+  "tabs": {
+    "home": "Inicio",
+    "calendar": "Calendario",
+    "customers": "Clientes",
+    "services": "Servicios",
+    "payments": "Pagos",
+    "route": "Ruta",
+    "profile": "Perfil"
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "common": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Loschen",
+    "edit": "Bearbeiten",
+    "close": "Schliessen",
+    "loading": "Laden...",
+    "error": "Fehler",
+    "success": "Erfolg",
+    "search": "Suchen",
+    "confirm": "Bestatigen",
+    "back": "Zuruck",
+    "next": "Weiter",
+    "done": "Fertig",
+    "yes": "Ja",
+    "no": "Nein",
+    "ok": "OK"
+  },
+  "auth": {
+    "login": "Anmelden",
+    "register": "Registrieren",
+    "logout": "Abmelden",
+    "email": "E-Mail",
+    "password": "Passwort",
+    "confirmPassword": "Passwort bestatigen",
+    "fullName": "Vollstandiger Name",
+    "forgotPassword": "Passwort vergessen?",
+    "noAccount": "Noch kein Konto?",
+    "hasAccount": "Bereits ein Konto?",
+    "signUp": "Registrieren",
+    "signIn": "Anmelden"
+  },
+  "profile": {
+    "title": "Profil",
+    "accountInfo": "Kontoinformationen",
+    "quickActions": "Schnellaktionen",
+    "editProfile": "Profil bearbeiten",
+    "managePriceLists": "Preislisten verwalten",
+    "invitations": "Einladungen",
+    "myHorses": "Meine Pferde",
+    "manageConsents": "Einwilligungen verwalten",
+    "languageRegion": "Sprache & Region",
+    "phone": "Telefon",
+    "address": "Adresse",
+    "signOutConfirm": "Mochten Sie sich wirklich abmelden?"
+  },
+  "language": {
+    "title": "Sprache & Region",
+    "language": "Sprache",
+    "country": "Land",
+    "searchLanguages": "Sprachen suchen...",
+    "searchCountries": "Lander suchen...",
+    "selectLanguage": "Sprache wahlen",
+    "selectCountry": "Land wahlen",
+    "useDeviceLanguage": "Geratesprache verwenden",
+    "useDeviceLanguageDesc": "Automatisch die Sprache des Gerats verwenden",
+    "saveChanges": "Anderungen speichern",
+    "settingsUpdated": "Einstellungen aktualisiert",
+    "settingsError": "Fehler beim Aktualisieren"
+  },
+  "calendar": {
+    "title": "Kalender",
+    "today": "Heute",
+    "noAppointments": "Keine Termine",
+    "addAppointment": "Termin hinzufugen"
+  },
+  "customers": {
+    "title": "Kunden",
+    "noCustomers": "Noch keine Kunden",
+    "addCustomer": "Kunde hinzufugen"
+  },
+  "services": {
+    "title": "Dienstleistungen",
+    "noServices": "Keine Dienstleistungen"
+  },
+  "payments": {
+    "title": "Zahlungen",
+    "noPayments": "Keine Zahlungen"
+  },
+  "route": {
+    "title": "Route",
+    "optimize": "Route optimieren",
+    "noStops": "Keine Stopps geplant"
+  },
+  "horses": {
+    "title": "Pferde",
+    "myHorses": "Meine Pferde",
+    "addHorse": "Pferd hinzufugen",
+    "noHorses": "Keine Pferde"
+  },
+  "tabs": {
+    "home": "Home",
+    "calendar": "Kalender",
+    "customers": "Kunden",
+    "services": "Dienste",
+    "payments": "Zahlungen",
+    "route": "Route",
+    "profile": "Profil"
+  }
+}
