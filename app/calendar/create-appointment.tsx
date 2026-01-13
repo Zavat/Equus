@@ -306,7 +306,7 @@ export default function CreateAppointmentScreen() {
             disabled={loading}
           >
             <Text style={styles.submitButtonText}>
-              {loading ? 'Creating...' : 'Create Appointment'}
+              {loading ? 'Creating...' : 'Create Appointment test'}
             </Text>
           </TouchableOpacity>
         </ScrollView>
