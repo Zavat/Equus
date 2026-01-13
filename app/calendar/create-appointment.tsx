@@ -126,7 +126,7 @@ export default function CreateAppointmentScreen() {
   }
 
   async function handleSubmit() {
-    console.log("test");
+    console.log(selectedClientId);
     if (!selectedClientId) {
       Alert.alert('Error', isFarrier ? 'Please select a client' : 'Please select a farrier');
       return;
