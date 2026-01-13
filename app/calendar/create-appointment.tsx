@@ -111,6 +111,8 @@ export default function CreateAppointmentScreen() {
     } catch (error) {
       console.error('Error loading horses:', error);
     }
+    console.log("dataload client");
+    console.log(data);
   }
 
   function toggleHorse(horseId: string) {
