@@ -75,7 +75,7 @@ export default function CustomersScreen() {
 
   async function handleAddCustomer() {
     const { status } = await Contacts.requestPermissionsAsync();
-    console.log("aggiungo customer");
+    console.log(status);
     if (status !== 'granted') {
       Alert.alert(
         'Permission Required',
