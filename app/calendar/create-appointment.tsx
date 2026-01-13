@@ -137,7 +137,7 @@ export default function CreateAppointmentScreen() {
     }
 
     setLoading(true);
-
+    console.log("sono dentro handle");
     try {
       const appointmentDate = new Date(date as string);
       appointmentDate.setHours(parseInt(selectedHour), parseInt(selectedMinute), 0, 0);
