@@ -65,8 +65,7 @@ export default function CreateAppointmentScreen() {
       if (isFarrier) {
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, full_name, role')
-          .in('role', ['owner', 'stable']);
+          .select('id, full_name, role');
 
         if (error) throw error;
         console.log("data");
