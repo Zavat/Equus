@@ -70,6 +70,7 @@ export default function CreateAppointmentScreen() {
           .order('full_name');
 
         if (error) throw error;
+        console.log("data");
         console.log(data);
         setClients(data || []);
       } else {
