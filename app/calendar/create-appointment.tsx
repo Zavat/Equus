@@ -71,6 +71,7 @@ export default function CreateAppointmentScreen() {
 
         if (error) throw error;
         setClients(data || []);
+        console.log(clients);
       } else {
         const [farriersResult, horsesResult] = await Promise.all([
           supabase
