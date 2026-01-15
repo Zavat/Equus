@@ -70,8 +70,8 @@ export default function CreateAppointmentScreen() {
           .order('full_name');
 
         if (error) throw error;
+        console.log(data);
         setClients(data || []);
-        console.log(clients);
       } else {
         const [farriersResult, horsesResult] = await Promise.all([
           supabase
