@@ -56,6 +56,7 @@ export default function CreateAppointmentScreen() {
   }, [selectedClientId]);
 
   async function loadData() {
+    console.log(profile);
     if (!profile) return;
 
     try {
