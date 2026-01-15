@@ -66,8 +66,7 @@ export default function CreateAppointmentScreen() {
         const { data, error } = await supabase
           .from('profiles')
           .select('id, full_name, role')
-          .in('role', ['owner', 'stable'])
-          .order('full_name');
+          .in('role', ['owner', 'stable']);
 
         if (error) throw error;
         console.log("data");
