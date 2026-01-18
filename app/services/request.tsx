@@ -72,6 +72,8 @@ export default function RequestServiceScreen() {
       if (farriersResult.error) throw farriersResult.error;
 
       setHorses(horsesResult.data || []);
+      console.log("farrier result nel loading");
+      console.log(farriersResult);
       setFarriers(farriersResult.data || []);
 
       if (lastFarrierResult.data?.farrier_id) {
