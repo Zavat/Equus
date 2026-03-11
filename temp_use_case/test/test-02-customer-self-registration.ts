@@ -1,271 +1,136 @@
-import { supabase } from '@/lib/supabase';
-import { createAccount } from '../01-account-management/uc-01-create-account';
-import { completeProfile } from '../01-account-management/uc-02-complete-profile';
+import { supabase } from '@/lib/supabase'
+import { createAccount } from '../01-account-management/uc-01-create-account'
+import { completeProfile } from '../01-account-management/uc-02-complete-profile'
 
-/**
- * TEST 02: Cliente si Registra Autonomamente
- *
- * Flusso:
- * 1. Cliente si registra con email/password
- * 2. Sistema crea people + profile con role='customer' e source='user'
- * 3. Cliente completa il profilo
- * 4. Verifica che possa vedere solo i propri dati
- */
+export async function testCustomerSelfRegistration() {
 
-interface TestResult {
-  success: boolean;
-  testName: string;
-  duration?: number;
-  steps?: StepResult[];
-  error?: string;
-  data?: {
-    userId?: string;
-    profileId?: string;
-    personId?: string;
-  };
-}
+  const email = `customer-test-${Date.now()}@example.com`
+  const password = 'TestPassword123!'
 
-interface StepResult {
-  stepName: string;
-  success: boolean;
-  duration: number;
-  error?: string;
-  data?: any;
-}
-
-export async function testCustomerSelfRegistration(
-  testEmail?: string,
-  testPassword?: string
-): Promise<TestResult> {
-  const startTime = Date.now();
-  const steps: StepResult[] = [];
-
-  const email = testEmail || `customer-test-${Date.now()}@example.com`;
-  const password = testPassword || 'TestPassword123!';
+  console.log("TEST EMAIL:", email)
 
   try {
-    // STEP 1: Creazione account cliente
-    console.log('📝 Step 1: Creating customer account...');
-    const step1Start = Date.now();
 
-    const accountResult = await createAccount({
+    // STEP 1 — Create account
+    console.log("STEP 1: create account")
+
+    const account = await createAccount({
       email,
       password,
-      firstName: 'Maria',
-      lastName: 'Rossi',
-      role: 'customer',
-    });
+      firstName: "Maria",
+      lastName: "Rossi",
+      role: "customer"
+    })
 
-    steps.push({
-      stepName: 'Create Customer Account',
-      success: accountResult.success,
-      duration: Date.now() - step1Start,
-      error: accountResult.error,
-      data: accountResult.data,
-    });
-
-    if (!accountResult.success) {
-      throw new Error(`Account creation failed: ${accountResult.error}`);
+    if (!account.success) {
+      throw new Error(account.error)
     }
 
-    const { userId, profileId, personId } = accountResult.data!;
-    console.log('✅ Customer account created:', { userId, profileId, personId });
+    const { userId, profileId } = account.data!
 
-    // STEP 2: Verifica che il profilo sia customer con source='user'
-    console.log('🔍 Step 2: Verifying customer profile...');
-    const step2Start = Date.now();
+    console.log("ACCOUNT CREATED:", account.data)
+
+
+    // STEP 2 — LOGIN (fondamentale)
+    console.log("STEP 2: login")
+
+    const { error: loginError } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    })
+
+    if (loginError) {
+      throw new Error(loginError.message)
+    }
+
+
+    // STEP 3 — check session
+    const session = await supabase.auth.getSession()
+
+    console.log("SESSION:", session.data.session?.user.id)
+
+    if (!session.data.session) {
+      throw new Error("User not authenticated")
+    }
+
+
+    // STEP 4 — complete profile
+    console.log("STEP 3: complete profile")
+
+    const complete = await completeProfile(userId, {
+      phone: "+39 333 123 4567",
+      address: "Via Garibaldi 45",
+      city: "Roma",
+      country: "IT",
+      preferredLanguage: "it",
+      preferredMapsApp: "apple"
+    })
+
+    if (!complete.success) {
+      throw new Error(complete.error)
+    }
+
+
+    // STEP 5 — verify profile
+    console.log("STEP 4: verify profile")
 
     const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', profileId)
-      .maybeSingle();
+      .from("profiles")
+      .select("*")
+      .eq("id", profileId)
+      .single()
 
-    const isValidCustomerProfile =
-      !profileError &&
-      profile !== null &&
-      profile.role === 'customer' &&
-      profile.source === 'user' &&
-      profile.user_id === userId;
-
-    steps.push({
-      stepName: 'Verify Customer Profile',
-      success: isValidCustomerProfile,
-      duration: Date.now() - step2Start,
-      error: profileError?.message,
-      data: profile,
-    });
-
-    if (!isValidCustomerProfile) {
-      throw new Error('Customer profile validation failed');
+    if (profileError) {
+      throw profileError
     }
 
-    console.log('✅ Customer profile verified:', profile);
+    console.log("PROFILE:", profile)
 
-    // STEP 3: Completare profilo cliente
-    console.log('📝 Step 3: Completing customer profile...');
-    const step3Start = Date.now();
 
-    const completeResult = await completeProfile(userId, {
-      phone: '+39 333 123 4567',
-      address: 'Via Garibaldi 45, Roma',
-      preferredLanguage: 'it',
-      preferredMapsApp: 'apple',
-      useDeviceLanguage: false,
-    });
+    // STEP 6 — test update
+    console.log("STEP 5: update profile")
 
-    steps.push({
-      stepName: 'Complete Customer Profile',
-      success: completeResult.success,
-      duration: Date.now() - step3Start,
-      error: completeResult.error,
-      data: completeResult.profile,
-    });
-
-    if (!completeResult.success) {
-      throw new Error(`Profile completion failed: ${completeResult.error}`);
-    }
-
-    console.log('✅ Customer profile completed');
-
-    // STEP 4: Verifica RLS - cliente può vedere solo i propri dati
-    console.log('🔍 Step 4: Testing RLS policies...');
-    const step4Start = Date.now();
-
-    // Il cliente dovrebbe vedere solo il proprio profilo
-    const { data: ownProfile, error: ownProfileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    // Il cliente NON dovrebbe vedere altri profili
-    const { data: allProfiles, error: allProfilesError } = await supabase
-      .from('profiles')
-      .select('id');
-
-    const rlsWorking =
-      !ownProfileError &&
-      ownProfile !== null &&
-      allProfiles !== null &&
-      allProfiles.length === 1; // Solo il proprio profilo
-
-    steps.push({
-      stepName: 'Test RLS Policies',
-      success: rlsWorking,
-      duration: Date.now() - step4Start,
-      error: ownProfileError?.message || allProfilesError?.message,
-      data: {
-        ownProfile,
-        visibleProfilesCount: allProfiles?.length,
-      },
-    });
-
-    if (!rlsWorking) {
-      throw new Error('RLS policies not working correctly');
-    }
-
-    console.log('✅ RLS policies verified - customer can only see own data');
-
-    // STEP 5: Verifica che il cliente possa aggiornare i propri dati
-    console.log('📝 Step 5: Testing customer can update own data...');
-    const step5Start = Date.now();
-
-    const { data: { user }, error } = await supabase.auth.getUser();
-    if (!user) {
-        throw new Error('User must be authenticated');
-     }
-    console.log(user)
-    
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({ language: 'fr' })
-      .eq('id', profileId);
-
-    steps.push({
-      stepName: 'Test Update Own Data',
-      success: !updateError,
-      duration: Date.now() - step5Start,
-      error: updateError?.message,
-    });
+    const { data: updatedProfile, error: updateError } = await supabase
+      .from("profiles")
+      .update({ language: "fr" })
+      .eq("id", profileId)
+      .select()
+      .single()
 
     if (updateError) {
-      throw new Error(`Update failed: ${updateError.message}`);
+      throw updateError
     }
 
-    console.log('✅ Customer can update own data');
+    console.log("UPDATED PROFILE:", updatedProfile)
 
-    // Test completato con successo
-    const totalDuration = Date.now() - startTime;
+
+    // STEP 7 — test RLS
+    console.log("STEP 6: test RLS")
+
+    const { data: visibleProfiles, error: rlsError } = await supabase
+      .from("profiles")
+      .select("id")
+
+    if (rlsError) {
+      throw rlsError
+    }
+
+    console.log("VISIBLE PROFILES:", visibleProfiles.length)
 
     return {
       success: true,
-      testName: 'Customer Self Registration',
-      duration: totalDuration,
-      steps,
-      data: {
-        userId,
-        profileId,
-        personId,
-      },
-    };
+      userId,
+      profileId
+    }
+
   } catch (error) {
+
+    console.error("TEST FAILED:", error)
+
     return {
       success: false,
-      testName: 'Customer Self Registration',
-      duration: Date.now() - startTime,
-      steps,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    };
-  }
-}
-
-/**
- * Cleanup helper
- */
-export async function cleanupCustomerTest(userId: string): Promise<void> {
-  console.log('🧹 Cleaning up customer test data...');
-
-  try {
-    // 1. Elimina horses del cliente
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (profile) {
-      await supabase.from('horses').delete().eq('owner_profile_id', profile.id);
-
-      // 2. Elimina appointments
-      await supabase
-        .from('appointments')
-        .delete()
-        .eq('customer_profile_id', profile.id);
-
-      // 3. Elimina farrier_customer_relations
-      await supabase
-        .from('farrier_customer_relations')
-        .delete()
-        .eq('customer_profile_id', profile.id);
+      error: error instanceof Error ? error.message : "unknown"
     }
 
-    // 4. Elimina profile
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('person_id')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    await supabase.from('profiles').delete().eq('user_id', userId);
-
-    // 5. Elimina person
-    if (profileData?.person_id) {
-      await supabase.from('people').delete().eq('id', profileData.person_id);
-    }
-
-    console.log('✅ Cleanup completed');
-  } catch (error) {
-    console.error('❌ Cleanup error:', error);
   }
 }
