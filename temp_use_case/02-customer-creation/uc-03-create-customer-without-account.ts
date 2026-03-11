@@ -41,6 +41,22 @@ export async function createCustomerWithoutAccount(
   input: CreateCustomerWithoutAccountInput
 ): Promise<CreateCustomerWithoutAccountResult> {
   try {
+    // Verify authentication
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return {
+        success: false,
+        error: 'User not authenticated',
+      };
+    }
+
+    if (user.id !== input.farrierUserId) {
+      return {
+        success: false,
+        error: 'User ID mismatch',
+      };
+    }
+
     // Get farrier's profile ID from user ID
     const { data: farrierProfile, error: farrierError } = await supabase
       .from('profiles')
@@ -77,6 +93,14 @@ export async function createCustomerWithoutAccount(
     }
 
     // Step 2: Creare record in profiles con source='farrier' e user_id=NULL
+    console.log('Inserting profile with:', {
+      person_id: personData.id,
+      source: 'farrier',
+      role: 'customer',
+      user_id: null,
+      created_by: farrierProfile.id,
+    });
+
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .insert({
@@ -94,6 +118,7 @@ export async function createCustomerWithoutAccount(
 
     if (profileError || !profileData) {
       console.error('Profile creation error:', profileError);
+      console.error('Current auth user:', (await supabase.auth.getUser()).data.user?.id);
       return {
         success: false,
         error: `Errore durante la creazione del profilo cliente: ${profileError?.message}`,
