@@ -8,7 +8,9 @@
     "dev:tunnel": "EXPO_NO_TELEMETRY=1 expo start --tunnel",
     "build:web": "expo export --platform web",
     "lint": "expo lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "npx tsx temp_use_case/test/run-all-tests.ts",
+    "test:quick": "npx tsx temp_use_case/test/quick-test.ts"
   },
   "dependencies": {
     "@expo/ngrok": "^4.1.3",
