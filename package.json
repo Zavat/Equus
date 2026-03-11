@@ -9,8 +9,8 @@
     "build:web": "expo export --platform web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "test": "npx tsx temp_use_case/test/run-all-tests.ts",
-    "test:quick": "npx tsx temp_use_case/test/quick-test.ts"
+    "test": "cd temp_use_case && npx tsx --tsconfig tsconfig.json test/run-all-tests.ts",
+    "test:quick": "cd temp_use_case && npx tsx --tsconfig tsconfig.json test/quick-test.ts"
   },
   "dependencies": {
     "@expo/ngrok": "^4.1.3",
@@ -59,8 +59,11 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
+    "@types/node": "^25.4.0",
     "@types/react": "~19.1.10",
     "babel-plugin-module-resolver": "^5.0.2",
+    "dotenv": "^17.3.1",
+    "tsx": "^4.21.0",
     "typescript": "~5.9.2"
   }
 }

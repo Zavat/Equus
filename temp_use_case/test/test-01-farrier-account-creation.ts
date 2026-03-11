@@ -57,6 +57,8 @@ export async function testFarrierAccountCreation(
       role: 'farrier',
     });
 
+    console.log('Account result:', JSON.stringify(accountResult, null, 2));
+
     steps.push({
       stepName: 'Create Account',
       success: accountResult.success,

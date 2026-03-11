@@ -178,3 +178,16 @@ export const quickTestRunner = {
  * // Test performance
  * quickTestRunner.performance();
  */
+
+// Esegui il test se questo file viene eseguito direttamente
+if (require.main === module) {
+  quickTest()
+    .then(() => {
+      console.log('✅ Quick test completed');
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error('❌ Quick test failed:', error);
+      process.exit(1);
+    });
+}
