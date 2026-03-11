@@ -48,9 +48,10 @@ export async function linkCustomerToFarrier(
       .single();
 
     if (relationError || !relationData) {
+      console.error('Relation creation error:', relationError);
       return {
         success: false,
-        error: 'Errore durante la creazione della relazione farrier-cliente',
+        error: `Errore durante la creazione della relazione farrier-cliente: ${relationError?.message}`,
       };
     }
 

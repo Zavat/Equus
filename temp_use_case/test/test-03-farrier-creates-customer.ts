@@ -89,11 +89,11 @@ export async function testFarrierCreatesCustomer(
       data: customerResult.data,
     });
 
-    if (!customerResult.success) {
+    if (!customerResult.success || !customerResult.profileId) {
       throw new Error(`Customer creation failed: ${customerResult.error}`);
     }
 
-    const customerProfileId = customerResult.data!.profileId;
+    const customerProfileId = customerResult.profileId;
     console.log('✅ Customer profile created:', customerProfileId);
 
     // STEP 3: Verifica che il profilo cliente abbia source='farrier' e user_id=NULL

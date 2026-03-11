@@ -19,11 +19,55 @@ interface GenerateInvitationResult {
   claimToken?: string;
   expiresAt?: string;
   error?: string;
+  data?: {
+    token: string;
+    expiresAt: string;
+  };
 }
+
+// Wrapper for backward compatibility with tests
+export async function generateInvitation(
+  farrierUserIdOrInput: string | GenerateInvitationInput,
+  customerProfileId?: string,
+  expiresInDays?: number
+): Promise<GenerateInvitationResult>;
 
 export async function generateInvitation(
   input: GenerateInvitationInput
+): Promise<GenerateInvitationResult>;
+
+export async function generateInvitation(
+  farrierUserIdOrInput: string | GenerateInvitationInput,
+  customerProfileId?: string,
+  expiresInDays?: number
 ): Promise<GenerateInvitationResult> {
+  // Handle both call signatures
+  let input: GenerateInvitationInput;
+
+  if (typeof farrierUserIdOrInput === 'string') {
+    // Legacy signature: generateInvitation(farrierUserId, customerProfileId, expiresInDays)
+    // Need to convert farrierUserId to farrierProfileId
+    const { data: farrierProfile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('user_id', farrierUserIdOrInput)
+      .single();
+
+    if (!farrierProfile) {
+      return {
+        success: false,
+        error: 'Farrier profile not found',
+      };
+    }
+
+    input = {
+      farrierProfileId: farrierProfile.id,
+      customerProfileId: customerProfileId!,
+      expiresInDays,
+    };
+  } else {
+    input = farrierUserIdOrInput;
+  }
   try {
     // Verificare che il profilo cliente non abbia già un user_id
     const { data: profileData, error: profileError } = await supabase
@@ -33,9 +77,17 @@ export async function generateInvitation(
       .single();
 
     if (profileError) {
+      console.error('Profile lookup error:', profileError);
       return {
         success: false,
-        error: 'Profilo cliente non trovato',
+        error: `Profilo cliente non trovato: ${profileError.message}`,
+      };
+    }
+
+    if (!profileData) {
+      return {
+        success: false,
+        error: 'Profilo cliente non trovato (no data)',
       };
     }
 
@@ -59,7 +111,7 @@ export async function generateInvitation(
       .from('profile_invitations')
       .insert({
         profile_id: input.customerProfileId,
-        invited_by_profile_id: input.farrierProfileId,
+        farrier_profile_id: input.farrierProfileId,
         claim_token: claimToken,
         expires_at: expiresAt.toISOString(),
         status: 'pending',
@@ -68,9 +120,10 @@ export async function generateInvitation(
       .single();
 
     if (invitationError || !invitationData) {
+      console.error('Invitation creation error:', invitationError);
       return {
         success: false,
-        error: 'Errore durante la creazione dell\'invito',
+        error: `Errore durante la creazione dell'invito: ${invitationError?.message}`,
       };
     }
 
@@ -79,6 +132,10 @@ export async function generateInvitation(
       invitationId: invitationData.id,
       claimToken: invitationData.claim_token,
       expiresAt: invitationData.expires_at,
+      data: {
+        token: invitationData.claim_token,
+        expiresAt: invitationData.expires_at,
+      },
     };
   } catch (error) {
     return {

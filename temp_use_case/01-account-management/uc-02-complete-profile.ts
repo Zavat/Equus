@@ -1,36 +1,12 @@
 import { supabase } from '@/lib/supabase';
 
-// Simple retry helper for network errors
-async function retryOnNetworkError<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
-  let lastError: Error | undefined;
-
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      return await fn();
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-
-      const errorMessage = lastError.message.toLowerCase();
-      const isNetworkError = errorMessage.includes('fetch failed') ||
-                            errorMessage.includes('socket') ||
-                            errorMessage.includes('connection');
-
-      if (!isNetworkError || attempt === maxRetries) {
-        throw lastError;
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
-    }
-  }
-
-  throw lastError!;
-}
-
 /**
  * UC-02: Completare profilo utente
  *
  * Attore: Cliente
  * Descrizione: L'utente completa le informazioni del proprio profilo dopo la registrazione
+ *
+ * OTTIMIZZATO: Usa una singola chiamata RPC invece di 3 query separate
  */
 
 interface CompleteProfileInput {
@@ -69,50 +45,33 @@ export async function completeProfile(
     : userIdOrInput;
 
   try {
-    // Step 1: Get profile to find person_id (with retry)
-    const profile = await retryOnNetworkError(async () => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, person_id')
-        .eq('user_id', input.userId)
-        .single();
-
-      if (error) throw new Error(error.message);
-      if (!data) throw new Error('Profile not found');
-      return data;
+    // Use database function for single-query update (atomic transaction)
+    const { data, error } = await supabase.rpc('complete_profile', {
+      p_user_id: input.userId,
+      p_language: input.preferredLanguage || null,
+      p_preferred_maps_app: input.preferredMapsApp || null,
+      p_address: input.address || null,
+      p_city: input.city || null,
+      p_country: input.country || null,
+      p_phone: input.phone || null,
     });
 
-    // Step 2: Update profile with profile-specific fields (with retry)
-    await retryOnNetworkError(async () => {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          language: input.preferredLanguage,
-          preferred_maps_app: input.preferredMapsApp,
-          address: input.address,
-          city: input.city,
-          country: input.country,
-        })
-        .eq('user_id', input.userId);
+    if (error) {
+      console.error('Profile update error:', error);
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
 
-      if (error) throw new Error(error.message);
-    });
+    // Parse response from function
+    const result = data as { success: boolean; error?: string };
 
-    // Step 3: Update people with phone if provided and person_id exists (with retry)
-    if (input.phone && profile.person_id) {
-      try {
-        await retryOnNetworkError(async () => {
-          const { error } = await supabase
-            .from('people')
-            .update({ phone: input.phone })
-            .eq('id', profile.person_id!);
-
-          if (error) throw new Error(error.message);
-        });
-      } catch (peopleError) {
-        console.error('People update error:', peopleError);
-        // Non bloccare se l'aggiornamento di phone fallisce
-      }
+    if (!result.success) {
+      return {
+        success: false,
+        error: result.error || 'Profile update failed',
+      };
     }
 
     return {
