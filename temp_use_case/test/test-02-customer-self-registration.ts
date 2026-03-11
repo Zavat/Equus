@@ -173,7 +173,7 @@ export async function testCustomerSelfRegistration(
 
     const { error: updateError } = await supabase
       .from('profiles')
-      .update({ phone: '+39 333 999 8888' })
+      .update({ language: 'fr' })
       .eq('id', profileId);
 
     steps.push({

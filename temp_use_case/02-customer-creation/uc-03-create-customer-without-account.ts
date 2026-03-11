@@ -26,24 +26,53 @@ interface CreateCustomerWithoutAccountResult {
   error?: string;
 }
 
+// Wrapper function for backward compatibility with tests
+export async function createCustomerProfile(
+  farrierUserId: string,
+  customerData: Omit<CreateCustomerWithoutAccountInput, 'farrierUserId'>
+): Promise<CreateCustomerWithoutAccountResult> {
+  return createCustomerWithoutAccount({
+    farrierUserId,
+    ...customerData,
+  });
+}
+
 export async function createCustomerWithoutAccount(
   input: CreateCustomerWithoutAccountInput
 ): Promise<CreateCustomerWithoutAccountResult> {
   try {
+    // Get farrier's profile ID from user ID
+    const { data: farrierProfile, error: farrierError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('user_id', input.farrierUserId)
+      .single();
+
+    if (farrierError || !farrierProfile) {
+      console.error('Farrier profile error:', farrierError);
+      return {
+        success: false,
+        error: `Errore durante il recupero del profilo farrier: ${farrierError?.message}`,
+      };
+    }
+
     // Step 1: Creare record in people
     const { data: personData, error: personError } = await supabase
       .from('people')
       .insert({
         first_name: input.firstName,
         last_name: input.lastName,
+        phone: input.phone,
+        email: input.email,
       })
       .select('id')
       .single();
 
     if (personError || !personData) {
+      console.error('Person creation error:', personError);
       return {
         success: false,
-        error: 'Errore durante la creazione della persona',
+        error: `Errore durante la creazione della persona: ${personError?.message}`,
       };
     }
 
@@ -53,22 +82,21 @@ export async function createCustomerWithoutAccount(
       .insert({
         person_id: personData.id,
         source: 'farrier',
+        role: 'customer',
         user_id: null,
-        phone: input.phone,
-        email: input.email,
+        created_by: farrierProfile.id,
         address: input.address,
         city: input.city,
         country: input.country,
-        postal_code: input.postalCode,
-        notes: input.notes,
       })
       .select('id')
       .single();
 
     if (profileError || !profileData) {
+      console.error('Profile creation error:', profileError);
       return {
         success: false,
-        error: 'Errore durante la creazione del profilo cliente',
+        error: `Errore durante la creazione del profilo cliente: ${profileError?.message}`,
       };
     }
 

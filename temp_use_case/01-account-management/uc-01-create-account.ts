@@ -28,13 +28,15 @@ interface CreateAccountResult {
 export async function createAccount(input: CreateAccountInput): Promise<CreateAccountResult> {
   try {
     // Step 1: Creare auth.users tramite Supabase
-    // Il trigger database creerà automaticamente un profilo
+    // Il trigger database creerà automaticamente people + profile
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: input.email,
       password: input.password,
       options: {
         data: {
           role: input.role || 'customer',
+          first_name: input.firstName,
+          last_name: input.lastName,
         },
       },
     });
@@ -49,38 +51,21 @@ export async function createAccount(input: CreateAccountInput): Promise<CreateAc
 
     const userId = authData.user.id;
 
-    // Step 2: Creare record in people
-    const { data: personData, error: personError } = await supabase
-      .from('people')
-      .insert({
-        first_name: input.firstName,
-        last_name: input.lastName,
-      })
-      .select('id')
-      .single();
+    // Step 2: Recuperare il profilo e people creati dal trigger
+    // Aspettiamo un momento per permettere al trigger di completare
+    await new Promise(resolve => setTimeout(resolve, 100));
 
-    if (personError || !personData) {
-      console.error('Person error:', personError);
-      return {
-        success: false,
-        error: `Errore durante la creazione del profilo personale: ${personError?.message}`,
-      };
-    }
-
-    // Step 3: Aggiornare il profilo creato dal trigger con person_id
-    // Il trigger ha già creato il profilo base, ora lo colleghiamo a people
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
-      .update({ person_id: personData.id })
+      .select('id, person_id')
       .eq('user_id', userId)
-      .select('id')
       .single();
 
     if (profileError || !profileData) {
-      console.error('Profile error:', profileError);
+      console.error('Profile retrieval error:', profileError);
       return {
         success: false,
-        error: `Errore durante l'aggiornamento del profilo: ${profileError?.message}`,
+        error: `Errore durante il recupero del profilo: ${profileError?.message}`,
       };
     }
 
@@ -89,7 +74,7 @@ export async function createAccount(input: CreateAccountInput): Promise<CreateAc
       data: {
         userId: userId,
         profileId: profileData.id,
-        personId: personData.id,
+        personId: profileData.person_id || undefined,
       },
     };
   } catch (error) {
