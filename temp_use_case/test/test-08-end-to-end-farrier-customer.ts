@@ -100,11 +100,11 @@ export async function testEndToEndFarrierCustomer(): Promise<TestResult> {
       data: customerResult.data,
     });
 
-    if (!customerResult.success) {
+    if (!customerResult.success || !customerResult.profileId) {
       throw new Error(`Customer creation failed: ${customerResult.error}`);
     }
 
-    const customerProfileId = customerResult.data!.profileId;
+    const customerProfileId = customerResult.profileId;
     console.log('✅ Customer created:', customerProfileId);
 
     // STEP 3: Collegare cliente al farrier

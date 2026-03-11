@@ -105,6 +105,7 @@ export async function createCustomerWithoutAccount(
       profileId: profileData.id,
     };
   } catch (error) {
+    console.error('Customer creation catch error:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Errore sconosciuto',

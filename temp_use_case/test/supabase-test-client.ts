@@ -21,4 +21,17 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     persistSession: false,
     detectSessionInUrl: false,
   },
+  global: {
+    headers: {
+      'x-client-info': 'supabase-test-client',
+    },
+  },
+  db: {
+    schema: 'public',
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 2,
+    },
+  },
 });

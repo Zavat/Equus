@@ -62,6 +62,9 @@ export async function runAllTests(options?: {
     await cleanupFarrierAccountTest(test01.data.userId);
   }
 
+  // Delay between tests to avoid connection pool saturation
+  await new Promise(resolve => setTimeout(resolve, 500));
+
   // Test 02: Customer Self Registration
   if (verbose) console.log('\n📋 Running Test 02: Customer Self Registration...\n');
   const test02 = await testCustomerSelfRegistration();
@@ -83,6 +86,9 @@ export async function runAllTests(options?: {
   if (cleanup && test02.success && test02.data?.userId) {
     await cleanupCustomerTest(test02.data.userId);
   }
+
+  // Delay between tests to avoid connection pool saturation
+  await new Promise(resolve => setTimeout(resolve, 500));
 
   // Test 03: Farrier Creates Customer (richiede un farrier esistente)
   // Per questo test, creiamo un farrier temporaneo
