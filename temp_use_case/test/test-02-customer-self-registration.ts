@@ -171,6 +171,12 @@ export async function testCustomerSelfRegistration(
     console.log('📝 Step 5: Testing customer can update own data...');
     const step5Start = Date.now();
 
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (!user) {
+        throw new Error('User must be authenticated');
+     }
+    console.log(user)
+    
     const { error: updateError } = await supabase
       .from('profiles')
       .update({ language: 'fr' })
