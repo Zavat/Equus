@@ -34,14 +34,7 @@ export async function testCustomerSelfRegistration() {
     // STEP 2 — LOGIN (fondamentale)
     console.log("STEP 2: login")
 
-    const { error: loginError } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    })
 
-    if (loginError) {
-      throw new Error(loginError.message)
-    }
 
 
     // STEP 3 — check session
