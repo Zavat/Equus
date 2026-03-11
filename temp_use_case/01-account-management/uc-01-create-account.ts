@@ -21,9 +21,7 @@ interface CreateAccountResult {
   error?: string;
 }
 
-export async function createAccount(
-  input: CreateAccountInput
-): Promise<CreateAccountResult> {
+export async function createAccount(input: CreateAccountInput): Promise<CreateAccountResult> {
   try {
     // Step 1: Creare auth.users tramite Supabase
     const { data: authData, error: authError } = await supabase.auth.signUp({
