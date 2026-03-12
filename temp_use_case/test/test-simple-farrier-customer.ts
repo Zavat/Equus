@@ -1,13 +1,25 @@
 import { createClient } from '@supabase/supabase-js'
 import { Database } from '../../types/database'
 import * as dotenv from 'dotenv'
+import { resolve } from 'path'
 
-dotenv.config()
+// carica env esattamente come nel tuo script vecchio
+dotenv.config({ path: resolve(__dirname, '../../.env') })
 
-const supabase = createClient<Database>(
-  process.env.EXPO_PUBLIC_SUPABASE_URL!,
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!
-)
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables')
+}
+
+const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+    detectSessionInUrl: false
+  }
+})
 
 async function runFarrierCustomerFlowTest() {
 
