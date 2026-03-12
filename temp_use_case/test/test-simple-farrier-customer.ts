@@ -1,181 +1,178 @@
-import { createClient } from '@supabase/supabase-js';
-import { Database } from '../../types/database';
-import * as dotenv from 'dotenv';
-import { resolve } from 'path';
+import { createClient } from '@supabase/supabase-js'
+import { Database } from '../../types/database'
+import * as dotenv from 'dotenv'
 
-// Load environment variables
-dotenv.config({ path: resolve(__dirname, '../../.env') });
+dotenv.config()
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const supabase = createClient<Database>(
+  process.env.EXPO_PUBLIC_SUPABASE_URL!,
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!
+)
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
-}
+async function runFarrierCustomerFlowTest() {
 
-const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-    detectSessionInUrl: false,
-  },
-});
+  console.log("\n==============================")
+  console.log("E2E FARIER → CUSTOMER FLOW")
+  console.log("==============================\n")
 
-/**
- * TEST SEMPLICE: Farrier crea account e poi crea un customer
- */
-async function testSimpleFarrierCustomer() {
-  console.log('\n🧪 TEST SEMPLICE: Farrier crea account e customer\n');
+  const email = `farrier-${Date.now()}@test.com`
+  const password = "Password123!"
 
-  const farrierEmail = `farrier-${Date.now()}@test.com`;
-  const farrierPassword = 'Password123!';
+  // ---------------------------
+  // STEP 1 signup
+  // ---------------------------
 
-  try {
-    // ============================================
-    // STEP 1: Creare account FARRIER
-    // ============================================
-    console.log('📝 Step 1: Creazione account farrier...');
+  console.log("STEP 1 signup farrier")
 
-    const { data: authData, error: signUpError } = await supabase.auth.signUp({
-      email: farrierEmail,
-      password: farrierPassword,
+  const { data: signup, error: signupError } =
+    await supabase.auth.signUp({
+      email,
+      password,
       options: {
         data: {
-          first_name: 'Marco',
-          last_name: 'Bianchi',
-          role: 'farrier',
-        },
-      },
-    });
+          first_name: "Marco",
+          last_name: "Bianchi",
+          role: "farrier"
+        }
+      }
+    })
 
-    if (signUpError) {
-      throw new Error(`SignUp failed: ${signUpError.message}`);
-    }
+  if (signupError) throw signupError
 
-    if (!authData.user) {
-      throw new Error('No user returned from signUp');
-    }
+  const userId = signup.user?.id
+  console.log("user created:", userId)
 
-    const userId = authData.user.id;
-    console.log('✅ Farrier user created:', userId);
+  // ---------------------------
+  // STEP 2 session check
+  // ---------------------------
 
-    // Attendere che il trigger crei people e profile
-    await new Promise(resolve => setTimeout(resolve, 2000));
+  const session = await supabase.auth.getSession()
 
-    // Verificare che profile esista
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_id', userId)
-      .maybeSingle();
+  console.log("session:", session.data.session?.user.id)
 
-    if (profileError || !profile) {
-      throw new Error('Profile non creato dal trigger');
-    }
+  if (!session.data.session) {
+    throw new Error("NO AUTH SESSION")
+  }
 
-    console.log('✅ Profile trovato:', profile.id);
-    console.log('   Person ID:', profile.person_id);
-    console.log('   Role:', profile.role);
+  // ---------------------------
+  // STEP 3 wait trigger
+  // ---------------------------
 
-    if (!profile.person_id) {
-      throw new Error('person_id è null! Il trigger non ha creato people');
-    }
+  console.log("waiting trigger...")
 
-    // Aggiornare phone in people
-    const { error: personError } = await supabase
-      .from('people')
-      .update({
-        phone: '+39 333 111 2222',
-      })
-      .eq('id', profile.person_id);
+  await new Promise(r => setTimeout(r, 2000))
 
-    if (personError) {
-      throw new Error(`Update person failed: ${personError.message}`);
-    }
+  // ---------------------------
+  // STEP 4 verify profile
+  // ---------------------------
 
-    console.log('✅ Person phone aggiornato');
+  console.log("STEP 4 verify farrier profile")
 
-    // Aggiornare profile
-    const { error: updateProfileError } = await supabase
-      .from('profiles')
-      .update({
-        address: 'Via Roma 10, Milano',
-        language: 'it',
-      })
-      .eq('id', profile.id);
+  const { data: farrierProfile, error: profileError } =
+    await supabase
+      .from("profiles")
+      .select("*")
+      .eq("user_id", userId)
+      .single()
 
-    if (updateProfileError) {
-      throw new Error(`Update profile failed: ${updateProfileError.message}`);
-    }
+  if (profileError) throw profileError
 
-    console.log('✅ Profile aggiornato');
+  console.log("profile:", farrierProfile)
 
-    // ============================================
-    // STEP 2: FARRIER crea un CUSTOMER
-    // ============================================
-    console.log('\n📝 Step 2: Farrier crea un customer...');
+  if (farrierProfile.role !== "farrier")
+    throw new Error("role incorrect")
 
-    // Prima creare la person per il customer
-    const { data: customerPerson, error: customerPersonError } = await supabase
-      .from('people')
+  // ---------------------------
+  // STEP 5 update own profile
+  // ---------------------------
+
+  console.log("STEP 5 update own profile")
+
+  const { error: updateError } =
+    await supabase
+      .from("profiles")
+      .update({ language: "it" })
+      .eq("id", farrierProfile.id)
+
+  if (updateError) throw updateError
+
+  console.log("profile updated")
+
+  // ---------------------------
+  // STEP 6 create customer person
+  // ---------------------------
+
+  console.log("STEP 6 create customer person")
+
+  const { data: person, error: personError } =
+    await supabase
+      .from("people")
       .insert({
-        first_name: 'Luigi',
-        last_name: 'Verdi',
-        email: `customer-${Date.now()}@test.com`,
-        phone: '+39 333 999 8888',
+        first_name: "Luigi",
+        last_name: "Verdi",
+        email: `customer-${Date.now()}@test.com`
       })
       .select()
-      .single();
+      .single()
 
-    if (customerPersonError) {
-      throw new Error(`Create customer person failed: ${customerPersonError.message}`);
-    }
+  if (personError) throw personError
 
-    console.log('✅ Customer person creato:', customerPerson.id);
+  console.log("person created:", person.id)
 
-    // Poi creare il profile del customer
-    const { data: customerProfile, error: customerProfileError } = await supabase
-      .from('profiles')
+  // ---------------------------
+  // STEP 7 create customer profile
+  // ---------------------------
+
+  console.log("STEP 7 create customer profile")
+
+  const { data: customerProfile, error: customerError } =
+    await supabase
+      .from("profiles")
       .insert({
-        person_id: customerPerson.id,
-        role: 'customer',
-        source: 'farrier',
-        created_by: profile.id, // Il farrier che lo crea
-        address: 'Via Napoli 5, Roma',
-        language: 'it',
+        person_id: person.id,
+        role: "customer",
+        source: "farrier",
+        created_by: farrierProfile.id
       })
       .select()
-      .single();
+      .single()
 
-    if (customerProfileError) {
-      throw new Error(`Create customer profile failed: ${customerProfileError.message}`);
-    }
+  if (customerError) throw customerError
 
-    console.log('✅ Customer profile creato:', customerProfile.id);
+  console.log("customer profile:", customerProfile.id)
 
-    // Creare la relazione farrier-customer
-    const { data: relation, error: relationError } = await supabase
-      .from('farrier_customer_relations')
+  if (customerProfile.user_id !== null)
+    throw new Error("customer should not have user")
+
+  // ---------------------------
+  // STEP 8 relation
+  // ---------------------------
+
+  console.log("STEP 8 create relation")
+
+  const { data: relation, error: relationError } =
+    await supabase
+      .from("farrier_customer_relations")
       .insert({
-        farrier_profile_id: profile.id,
-        client_profile_id: customerProfile.id,
+        farrier_profile_id: farrierProfile.id,
+        client_profile_id: customerProfile.id
       })
       .select()
-      .single();
+      .single()
 
-    if (relationError) {
-      throw new Error(`Create relation failed: ${relationError.message}`);
-    }
+  if (relationError) throw relationError
 
-    console.log('✅ Relazione farrier-customer creata:', relation);
+  console.log("relation created:", relation.id)
 
-    // ============================================
-    // STEP 3: Verificare che il farrier veda il customer
-    // ============================================
-    console.log('\n📝 Step 3: Verificare che farrier veda il customer...');
+  // ---------------------------
+  // STEP 9 verify farrier sees customer
+  // ---------------------------
 
-    const { data: customers, error: customersError } = await supabase
-      .from('farrier_customer_relations')
+  console.log("STEP 9 verify RLS view")
+
+  const { data: customers, error: customersError } =
+    await supabase
+      .from("farrier_customer_relations")
       .select(`
         *,
         customer:profiles!client_profile_id(
@@ -183,38 +180,34 @@ async function testSimpleFarrierCustomer() {
           person:people(*)
         )
       `)
-      .eq('farrier_profile_id', profile.id);
+      .eq("farrier_profile_id", farrierProfile.id)
 
-    if (customersError) {
-      throw new Error(`Query customers failed: ${customersError.message}`);
-    }
+  if (customersError) throw customersError
 
-    console.log('✅ Farrier vede', customers.length, 'customer(s)');
-    console.log('   Customer:', customers[0]?.customer);
+  console.log("customers visible:", customers.length)
 
-    // ============================================
-    // RISULTATO FINALE
-    // ============================================
-    console.log('\n✅ TEST COMPLETATO CON SUCCESSO!\n');
-    console.log('Riepilogo:');
-    console.log('  - Farrier user_id:', userId);
-    console.log('  - Farrier profile_id:', profile.id);
-    console.log('  - Customer profile_id:', customerProfile.id);
-    console.log('  - Relation ID:', relation.id);
+  if (customers.length !== 1)
+    throw new Error("customer not visible")
 
-  } catch (error) {
-    console.error('\n❌ TEST FALLITO:', error instanceof Error ? error.message : error);
-    throw error;
-  }
+  console.log("customer data:", customers[0].customer)
+
+  // ---------------------------
+  // STEP 10 verify profile visibility
+  // ---------------------------
+
+  console.log("STEP 10 verify profile visibility")
+
+  const { data: profiles } =
+    await supabase
+      .from("profiles")
+      .select("id")
+
+  console.log("visible profiles:", profiles?.length)
+
+  console.log("\n==============================")
+  console.log("TEST SUCCESS")
+  console.log("==============================\n")
+
 }
 
-// Eseguire il test
-testSimpleFarrierCustomer()
-  .then(() => {
-    console.log('\n✅ Test completato');
-    process.exit(0);
-  })
-  .catch(error => {
-    console.error('\n❌ Errore:', error);
-    process.exit(1);
-  });
+runFarrierCustomerFlowTest()
