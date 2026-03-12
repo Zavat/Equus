@@ -1,4 +1,4 @@
-import { supabase, retryOperation } from './supabase-test-client';
+import { supabase } from '@/lib/supabase';
 import { createAccount } from '../01-account-management/uc-01-create-account';
 import { completeProfile } from '../01-account-management/uc-02-complete-profile';
 

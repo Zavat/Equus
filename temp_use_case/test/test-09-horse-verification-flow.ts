@@ -1,4 +1,4 @@
-import { supabase } from './supabase-test-client';
+import { supabase } from '@/lib/supabase';
 import { farrierAddHorse } from '../04-horses/uc-08-farrier-add-horse';
 import { verifyHorse } from '../04-horses/uc-10-verify-horse';
 import { rejectHorse } from '../07-temporary-data/uc-21-reject-horse';
