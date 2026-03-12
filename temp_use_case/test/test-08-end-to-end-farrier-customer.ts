@@ -297,26 +297,14 @@ export async function testEndToEndFarrierCustomer(): Promise<TestResult> {
       .select(
         `
         id,
-        scheduled_at,
-        location,
+        proposed_date,
+        confirmed_date,
         status,
-        customer_profile:profiles!appointments_customer_profile_id_fkey (
-          id,
-          people (
-            first_name,
-            last_name
-          )
-        ),
-        farrier_profile:profiles!appointments_farrier_profile_id_fkey (
-          id,
-          people (
-            first_name,
-            last_name
-          )
-        ),
+        num_horses,
+        notes,
         appointment_horses (
-          service_type,
-          notes,
+          work_type,
+          special_notes,
           horses (
             id,
             name,
@@ -331,10 +319,6 @@ export async function testEndToEndFarrierCustomer(): Promise<TestResult> {
       .eq('id', appointmentId)
       .maybeSingle();
 
-    console.log(completeError);
-    console.log(completeData);
-    console.log(completeData.appointment_horses.length === 2);
-    
     const hasCompleteStructure =
       !completeError &&
       completeData !== null &&
@@ -348,29 +332,7 @@ export async function testEndToEndFarrierCustomer(): Promise<TestResult> {
       error: completeError?.message,
       data: completeData,
     });
-    // Controlla se l'appuntamento stesso è visibile
-const { data: appt, error: apptError } = await supabase
-  .from('appointments')
-  .select('*')
-  .eq('id', appointmentId)
-  .maybeSingle();
-console.log('appt', appt, apptError);
 
-// Controlla i profili collegati
-const { data: customer, error: custError } = await supabase
-  .from('profiles')
-  .select('*')
-  .eq('id', customerProfileId)
-  .maybeSingle();
-console.log('customer profile', customer, custError);
-
-const { data: farrier, error: farrierError } = await supabase
-  .from('profiles')
-  .select('*')
-  .eq('user_id', farrierUserId)
-  .maybeSingle();
-console.log('farrier profile', farrier, farrierError);
-    
     if (!hasCompleteStructure) {
       throw new Error('Complete data structure verification failed');
     }
