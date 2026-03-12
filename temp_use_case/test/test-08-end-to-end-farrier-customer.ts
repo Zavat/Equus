@@ -331,6 +331,10 @@ export async function testEndToEndFarrierCustomer(): Promise<TestResult> {
       .eq('id', appointmentId)
       .maybeSingle();
 
+    console.log(completeError);
+    console.log(completeData);
+    console.log(completeData.appointment_horses.length === 2);
+    
     const hasCompleteStructure =
       !completeError &&
       completeData !== null &&
