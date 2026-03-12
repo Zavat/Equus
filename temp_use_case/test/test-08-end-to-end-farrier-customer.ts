@@ -344,7 +344,29 @@ export async function testEndToEndFarrierCustomer(): Promise<TestResult> {
       error: completeError?.message,
       data: completeData,
     });
+    // Controlla se l'appuntamento stesso è visibile
+const { data: appt, error: apptError } = await supabase
+  .from('appointments')
+  .select('*')
+  .eq('id', appointmentId)
+  .maybeSingle();
+console.log('appt', appt, apptError);
 
+// Controlla i profili collegati
+const { data: customer, error: custError } = await supabase
+  .from('profiles')
+  .select('*')
+  .eq('id', customerProfileId)
+  .maybeSingle();
+console.log('customer profile', customer, custError);
+
+const { data: farrier, error: farrierError } = await supabase
+  .from('profiles')
+  .select('*')
+  .eq('user_id', farrierUserId)
+  .maybeSingle();
+console.log('farrier profile', farrier, farrierError);
+    
     if (!hasCompleteStructure) {
       throw new Error('Complete data structure verification failed');
     }
