@@ -12,12 +12,16 @@ interface FarrierAddHorseInput {
   customerProfileId: string;
   name: string;
   breed?: string;
-  birthYear?: number;
-  gender?: 'stallion' | 'mare' | 'gelding';
-  color?: string;
-  height?: number;
-  discipline?: string;
-  notes?: string;
+  age?: number;
+  dateOfBirth?: string;
+  sex?: 'male' | 'female' | 'gelding';
+  isShod?: boolean;
+  workType?: 'trim' | 'two_shoes' | 'four_shoes';
+  lastShoeingDate?: string;
+  issues?: string;
+  pathologies?: string;
+  specialNotes?: string;
+  primaryPhotoUrl?: string;
 }
 
 interface FarrierAddHorseResult {
@@ -45,21 +49,24 @@ export async function farrierAddHorse(
       };
     }
 
-    // Creare il cavallo con source='farrier' e verified_by_user=false
+    // Creare il cavallo - il maniscalco lo aggiunge per il cliente
     const { data: horseData, error: horseError } = await supabase
       .from('horses')
       .insert({
-        owner_profile_id: input.customerProfileId,
+        owner_id: input.customerProfileId,
+        stable_id: null,
         name: input.name,
-        breed: input.breed,
-        birth_year: input.birthYear,
-        gender: input.gender,
-        color: input.color,
-        height: input.height,
-        discipline: input.discipline,
-        notes: input.notes,
-        source: 'farrier',
-        verified_by_user: false,
+        breed: input.breed || null,
+        age: input.age || null,
+        work_type: input.workType || 'trim',
+        special_notes: input.specialNotes || '',
+        last_shoeing_date: input.lastShoeingDate || null,
+        date_of_birth: input.dateOfBirth || null,
+        sex: input.sex || null,
+        is_shod: input.isShod !== undefined ? input.isShod : true,
+        issues: input.issues || null,
+        pathologies: input.pathologies || null,
+        primary_photo_url: input.primaryPhotoUrl || null,
       })
       .select('id')
       .single();
