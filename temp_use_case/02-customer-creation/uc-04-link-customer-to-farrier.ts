@@ -27,7 +27,7 @@ export async function linkCustomerToFarrier(
       .from('farrier_customer_relations')
       .select('id')
       .eq('farrier_profile_id', input.farrierProfileId)
-      .eq('customer_profile_id', input.customerProfileId)
+      .eq('client_profile_id', input.customerProfileId)
       .maybeSingle();
 
     if (existingRelation) {
@@ -42,7 +42,7 @@ export async function linkCustomerToFarrier(
       .from('farrier_customer_relations')
       .insert({
         farrier_profile_id: input.farrierProfileId,
-        customer_profile_id: input.customerProfileId,
+        client_profile_id: input.customerProfileId,
       })
       .select('id')
       .single();

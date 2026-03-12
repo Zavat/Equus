@@ -39,7 +39,7 @@ export async function farrierAddHorse(
       .from('farrier_customer_relations')
       .select('id')
       .eq('farrier_profile_id', input.farrierProfileId)
-      .eq('customer_profile_id', input.customerProfileId)
+      .eq('client_profile_id', input.customerProfileId)
       .maybeSingle();
 
     if (relationError || !relationData) {
@@ -53,7 +53,7 @@ export async function farrierAddHorse(
     const { data: horseData, error: horseError } = await supabase
       .from('horses')
       .insert({
-        owner_id: input.customerProfileId,
+        owner_profile_id: input.customerProfileId,
         stable_id: null,
         name: input.name,
         breed: input.breed || null,
@@ -71,7 +71,6 @@ export async function farrierAddHorse(
       .select('id')
       .single();
 
-    console.log(horseError)
     if (horseError || !horseData) {
       return {
         success: false,

@@ -111,7 +111,21 @@ export async function testEndToEndFarrierCustomer(): Promise<TestResult> {
     console.log('📝 Step 3: Linking customer to farrier...');
     const step3Start = Date.now();
 
-    const linkResult = await linkCustomerToFarrier(farrierUserId, customerProfileId);
+    // Ottenere il farrier profile ID dal user ID
+    const { data: farrierProfileForLink, error: farrierProfileForLinkError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('user_id', farrierUserId)
+      .maybeSingle();
+
+    if (farrierProfileForLinkError || !farrierProfileForLink) {
+      throw new Error('Farrier profile not found for linking');
+    }
+
+    const linkResult = await linkCustomerToFarrier({
+      farrierProfileId: farrierProfileForLink.id,
+      customerProfileId,
+    });
 
     steps.push({
       stepName: 'Link Customer to Farrier',
@@ -152,20 +166,33 @@ export async function testEndToEndFarrierCustomer(): Promise<TestResult> {
     console.log('📝 Step 5: Adding horses...');
     const step5Start = Date.now();
 
+    // Ottenere il farrier profile ID dal user ID
+    const { data: farrierProfileData, error: farrierProfileError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('user_id', farrierUserId)
+      .maybeSingle();
+
+    if (farrierProfileError || !farrierProfileData) {
+      throw new Error('Farrier profile not found');
+    }
+
+    const farrierProfileId = farrierProfileData.id;
+
     const horses = [
       {
         name: 'Bella',
         breed: 'Frisone',
-        birthYear: 2017,
-        color: 'Nero',
-        microchipNumber: 'IT111222333',
+        age: 7,
+        sex: 'female' as const,
+        workType: 'four_shoes' as const,
       },
       {
         name: 'Duke',
         breed: 'Haflinger',
-        birthYear: 2019,
-        color: 'Isabella',
-        microchipNumber: 'IT444555666',
+        age: 5,
+        sex: 'gelding' as const,
+        workType: 'four_shoes' as const,
       },
     ];
 
@@ -173,18 +200,22 @@ export async function testEndToEndFarrierCustomer(): Promise<TestResult> {
     let allHorsesCreated = true;
 
     for (const horseData of horses) {
-      const horseResult = await farrierAddHorse(farrierUserId, {
-        ownerProfileId: customerProfileId,
+      const horseResult = await farrierAddHorse({
+        farrierProfileId,
+        customerProfileId,
         name: horseData.name,
         breed: horseData.breed,
-        birthYear: horseData.birthYear,
-        color: horseData.color,
-        microchipNumber: horseData.microchipNumber,
+        age: horseData.age,
+        sex: horseData.sex,
+        workType: horseData.workType,
+        isShod: true,
       });
 
-      if (horseResult.success && horseResult.data?.horseId) {
-        horseIds.push(horseResult.data.horseId);
+      if (horseResult.success && horseResult.horseId) {
+        horseIds.push(horseResult.horseId);
+        console.log(`✅ Horse created: ${horseData.name} (${horseResult.horseId})`);
       } else {
+        console.log(`❌ Failed to create horse: ${horseData.name}`, horseResult.error);
         allHorsesCreated = false;
         break;
       }
@@ -210,12 +241,12 @@ export async function testEndToEndFarrierCustomer(): Promise<TestResult> {
     const appointmentDate = new Date();
     appointmentDate.setDate(appointmentDate.getDate() + 5);
 
-    const appointmentResult = await createAppointment(farrierUserId, {
+    const appointmentResult = await createAppointment({
+      farrierProfileId,
       customerProfileId,
-      scheduledAt: appointmentDate.toISOString(),
-      location: 'Centro Equestre Il Quadrifoglio, Via Mazzini 88, Bologna',
+      proposedDate: appointmentDate.toISOString(),
+      numHorses: 2,
       notes: 'Ferratura completa per entrambi i cavalli',
-      estimatedDuration: 150,
     });
 
     steps.push({
@@ -223,34 +254,24 @@ export async function testEndToEndFarrierCustomer(): Promise<TestResult> {
       success: appointmentResult.success,
       duration: Date.now() - step6Start,
       error: appointmentResult.error,
-      data: appointmentResult.data,
+      data: { appointmentId: appointmentResult.appointmentId },
     });
 
     if (!appointmentResult.success) {
       throw new Error(`Appointment creation failed: ${appointmentResult.error}`);
     }
 
-    const appointmentId = appointmentResult.data!.appointmentId;
+    const appointmentId = appointmentResult.appointmentId!;
     console.log('✅ Appointment created:', appointmentId);
 
     // STEP 7: Aggiungere cavalli all'appuntamento
     console.log('📝 Step 7: Adding horses to appointment...');
     const step7Start = Date.now();
 
-    const addHorsesResult = await addHorsesToAppointment(farrierUserId, appointmentId, {
+    const addHorsesResult = await addHorsesToAppointment({
+      appointmentId,
       horseIds,
-      services: [
-        {
-          horseId: horseIds[0],
-          serviceType: 'full_shoeing',
-          notes: 'Ferratura completa 4 ferri',
-        },
-        {
-          horseId: horseIds[1],
-          serviceType: 'full_shoeing',
-          notes: 'Ferratura completa 4 ferri',
-        },
-      ],
+      farrierProfileId,
     });
 
     steps.push({
@@ -300,7 +321,9 @@ export async function testEndToEndFarrierCustomer(): Promise<TestResult> {
             id,
             name,
             breed,
-            verified_by_user
+            age,
+            sex,
+            work_type
           )
         )
       `
@@ -342,7 +365,7 @@ export async function testEndToEndFarrierCustomer(): Promise<TestResult> {
       .from('farrier_customer_relations')
       .select('*')
       .eq('farrier_profile_id', farrierProfile!.id)
-      .eq('customer_profile_id', customerProfileId);
+      .eq('client_profile_id', customerProfileId);
 
     const hasValidRelation =
       !relationsError && relations !== null && relations.length === 1;
@@ -423,7 +446,7 @@ export async function cleanupEndToEndTest(data: {
     await supabase
       .from('farrier_customer_relations')
       .delete()
-      .eq('customer_profile_id', customerProfileId);
+      .eq('client_profile_id', customerProfileId);
 
     // 6. Elimina customer profile
     const { data: customerProfile } = await supabase

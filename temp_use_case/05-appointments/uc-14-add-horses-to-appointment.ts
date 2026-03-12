@@ -26,7 +26,7 @@ export async function addHorsesToAppointment(
     // Verificare che l'appuntamento esista e appartenga al farrier
     const { data: appointmentData, error: appointmentError } = await supabase
       .from('appointments')
-      .select('id, farrier_profile_id, customer_profile_id')
+      .select('id, farrier_profile_id, client_profile_id')
       .eq('id', input.appointmentId)
       .single();
 
@@ -47,9 +47,9 @@ export async function addHorsesToAppointment(
     // Verificare che i cavalli appartengano al cliente
     const { data: horsesData, error: horsesError } = await supabase
       .from('horses')
-      .select('id')
+      .select('id, work_type')
       .in('id', input.horseIds)
-      .eq('owner_profile_id', appointmentData.customer_profile_id);
+      .eq('owner_profile_id', appointmentData.client_profile_id);
 
     if (horsesError) {
       return {
@@ -58,9 +58,7 @@ export async function addHorsesToAppointment(
       };
     }
 
-    const validHorseIds = horsesData?.map((h) => h.id) || [];
-
-    if (validHorseIds.length === 0) {
+    if (!horsesData || horsesData.length === 0) {
       return {
         success: false,
         error: 'Nessun cavallo valido trovato per questo cliente',
@@ -68,9 +66,10 @@ export async function addHorsesToAppointment(
     }
 
     // Creare le associazioni
-    const appointmentHorses = validHorseIds.map((horseId) => ({
+    const appointmentHorses = horsesData.map((horse) => ({
       appointment_id: input.appointmentId,
-      horse_id: horseId,
+      horse_id: horse.id,
+      work_type: horse.work_type,
     }));
 
     const { error: insertError } = await supabase
@@ -78,15 +77,16 @@ export async function addHorsesToAppointment(
       .insert(appointmentHorses);
 
     if (insertError) {
+      console.error('Insert error:', insertError);
       return {
         success: false,
-        error: 'Errore durante l\'associazione dei cavalli all\'appuntamento',
+        error: `Errore durante l'associazione dei cavalli all'appuntamento: ${insertError.message}`,
       };
     }
 
     return {
       success: true,
-      addedCount: validHorseIds.length,
+      addedCount: horsesData.length,
     };
   } catch (error) {
     return {

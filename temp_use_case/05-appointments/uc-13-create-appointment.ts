@@ -10,11 +10,12 @@ import { supabase } from '@/lib/supabase';
 interface CreateAppointmentInput {
   farrierProfileId: string;
   customerProfileId: string;
-  scheduledAt: string;
-  duration?: number;
-  location?: string;
+  proposedDate: string;
+  confirmedDate?: string;
+  numHorses?: number;
+  sequenceOrder?: number;
+  totalPrice?: number;
   notes?: string;
-  serviceType?: string;
 }
 
 interface CreateAppointmentResult {
@@ -32,7 +33,7 @@ export async function createAppointment(
       .from('farrier_customer_relations')
       .select('id')
       .eq('farrier_profile_id', input.farrierProfileId)
-      .eq('customer_profile_id', input.customerProfileId)
+      .eq('client_profile_id', input.customerProfileId)
       .maybeSingle();
 
     if (relationError || !relationData) {
@@ -47,21 +48,23 @@ export async function createAppointment(
       .from('appointments')
       .insert({
         farrier_profile_id: input.farrierProfileId,
-        customer_profile_id: input.customerProfileId,
-        scheduled_at: input.scheduledAt,
-        duration: input.duration || 60,
-        location: input.location,
-        notes: input.notes,
-        service_type: input.serviceType,
+        client_profile_id: input.customerProfileId,
+        proposed_date: input.proposedDate,
+        confirmed_date: input.confirmedDate || null,
+        num_horses: input.numHorses || 0,
+        sequence_order: input.sequenceOrder || 0,
+        total_price: input.totalPrice || 0,
+        notes: input.notes || null,
         status: 'pending',
       })
       .select('id')
       .single();
 
     if (appointmentError || !appointmentData) {
+      console.error('Appointment error:', appointmentError);
       return {
         success: false,
-        error: 'Errore durante la creazione dell\'appuntamento',
+        error: `Errore durante la creazione dell'appuntamento: ${appointmentError?.message}`,
       };
     }
 
