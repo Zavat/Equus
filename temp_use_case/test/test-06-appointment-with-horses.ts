@@ -326,7 +326,10 @@ export async function cleanupAppointmentWithHorsesTest(
       await supabase.from('horses').delete().in('id', horseIds);
     }
 
-    console.log('✅ Cleanup completed');
+    // 4. Logout
+    await supabase.auth.signOut();
+
+    console.log('✅ Cleanup completed (including logout)');
   } catch (error) {
     console.error('❌ Cleanup error:', error);
   }

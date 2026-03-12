@@ -402,7 +402,10 @@ export async function cleanupHorseVerificationTest(
     // Elimina tutti i cavalli del cliente
     await supabase.from('horses').delete().eq('owner_profile_id', customerProfileId);
 
-    console.log('✅ Cleanup completed');
+    // Logout
+    await supabase.auth.signOut();
+
+    console.log('✅ Cleanup completed (including logout)');
   } catch (error) {
     console.error('❌ Cleanup error:', error);
   }

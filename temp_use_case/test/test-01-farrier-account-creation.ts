@@ -257,7 +257,10 @@ export async function cleanupFarrierAccountTest(userId: string): Promise<void> {
     // 5. Elimina auth user (richiede admin rights)
     // await supabase.auth.admin.deleteUser(userId);
 
-    console.log('✅ Cleanup completed');
+    // 6. Logout
+    await supabase.auth.signOut();
+
+    console.log('✅ Cleanup completed (including logout)');
   } catch (error) {
     console.error('❌ Cleanup error:', error);
   }

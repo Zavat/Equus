@@ -290,7 +290,10 @@ export async function cleanupAppointmentTest(appointmentId: string): Promise<voi
     // 2. Elimina appointment
     await supabase.from('appointments').delete().eq('id', appointmentId);
 
-    console.log('✅ Cleanup completed');
+    // 3. Logout
+    await supabase.auth.signOut();
+
+    console.log('✅ Cleanup completed (including logout)');
   } catch (error) {
     console.error('❌ Cleanup error:', error);
   }

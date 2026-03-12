@@ -291,7 +291,10 @@ export async function cleanupFarrierCustomerTest(
       await supabase.from('people').delete().eq('id', profile.person_id);
     }
 
-    console.log('✅ Cleanup completed');
+    // 6. Logout
+    await supabase.auth.signOut();
+
+    console.log('✅ Cleanup completed (including logout)');
   } catch (error) {
     console.error('❌ Cleanup error:', error);
   }

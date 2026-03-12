@@ -216,6 +216,14 @@ async function runFarrierCustomerFlowTest() {
 
   console.log("visible profiles:", profiles?.length)
 
+  // ---------------------------
+  // CLEANUP logout
+  // ---------------------------
+
+  console.log("CLEANUP logout")
+
+  await supabase.auth.signOut()
+
   console.log("\n==============================")
   console.log("TEST SUCCESS")
   console.log("==============================\n")

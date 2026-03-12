@@ -298,11 +298,39 @@ await createCustomerWithoutAccount({
 
 ---
 
-## 5. Cosa Manca nei Test
+## 5. Cleanup con Logout
 
-### 🚨 Problema 1: Nessun Test con Cambio Utente
+### ✅ RISOLTO: Logout nei Test
 
-Nessun test fa:
+Tutti i test ora includono `await supabase.auth.signOut()` nel cleanup:
+
+```typescript
+export async function cleanupTest(data: any): Promise<void> {
+  try {
+    // 1. Elimina dati dal database
+    await supabase.from('appointments').delete()...
+
+    // 2. Elimina profili
+    await supabase.from('profiles').delete()...
+
+    // 3. LOGOUT
+    await supabase.auth.signOut();
+
+    console.log('✅ Cleanup completed (including logout)');
+  } catch (error) {
+    console.error('❌ Cleanup error:', error);
+  }
+}
+```
+
+**Benefici:**
+- ✅ Ogni test riparte con stato di autenticazione pulito
+- ✅ Nessuna interferenza tra test successivi
+- ✅ Simula meglio il comportamento reale (logout esplicito)
+
+### 🚨 Problema: Test Multi-Utente Mancanti
+
+I test attuali non fanno mai cambio di utente:
 ```typescript
 // Login come farrier
 await supabase.auth.signInWithPassword({ email: farrier, password });
@@ -317,9 +345,9 @@ await supabase.auth.signInWithPassword({ email: customer, password });
 **Impatto:**
 - ❌ Non testiamo mai le operazioni dal punto di vista del customer
 - ❌ Non verifichiamo che i customer NON possano fare operazioni farrier
-- ❌ Non testiamo il flow "customer claims profile"
+- ❌ Non testiamo completamente il flow "customer claims profile"
 
-### 🚨 Problema 2: Test Isolati, Non Integrati
+### 🚨 Problema: Test Isolati, Non Integrati
 
 Ogni test crea nuovi dati:
 ```typescript
@@ -333,7 +361,7 @@ test-03: Crea farrier C + customer D
 - ❌ Non verifichiamo che farrier A NON veda customer D
 - ❌ Non testiamo scenari multi-tenancy
 
-### 🚨 Problema 3: Customer Senza Account Mai Testato
+### 🚨 Problema: Customer Senza Account Mai Testato
 
 I customer creati dai farrier hanno `user_id = null`:
 ```sql
@@ -660,7 +688,8 @@ describe('Multi-User Scenarios', () => {
 
 ### Next Steps
 
-- [ ] Aggiungere test con `signOut()` + cambio utente
+- [x] Aggiungere `signOut()` in tutti i cleanup dei test
+- [ ] Aggiungere test con cambio utente (farrier → customer)
 - [ ] Implementare `uc-07-claim-profile.ts` completo
 - [ ] Aggiungere test customer view (dopo claim)
 - [ ] Test RLS: verificare che farrier A NON veda dati farrier B

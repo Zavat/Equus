@@ -292,6 +292,10 @@ export async function testCustomerViewsAppointments(
 
     console.log('✅ Appointments with horses retrieved successfully');
 
+    // Cleanup: Logout
+    await supabase.auth.signOut();
+    console.log('✅ Logged out');
+
     // Test completato con successo
     const totalDuration = Date.now() - startTime;
 
@@ -308,6 +312,9 @@ export async function testCustomerViewsAppointments(
       },
     };
   } catch (error) {
+    // Cleanup on error: Logout
+    await supabase.auth.signOut();
+
     return {
       success: false,
       testName: 'Customer Views Appointments',

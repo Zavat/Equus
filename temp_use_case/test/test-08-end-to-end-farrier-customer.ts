@@ -462,7 +462,10 @@ export async function cleanupEndToEndTest(data: {
       await supabase.from('people').delete().eq('id', farrierProfile.person_id);
     }
 
-    console.log('✅ Cleanup completed');
+    // 8. Logout
+    await supabase.auth.signOut();
+
+    console.log('✅ Cleanup completed (including logout)');
   } catch (error) {
     console.error('❌ Cleanup error:', error);
   }

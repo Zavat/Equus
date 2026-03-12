@@ -110,6 +110,10 @@ export async function testCustomerSelfRegistration() {
 
     console.log("VISIBLE PROFILES:", visibleProfiles.length)
 
+    // Cleanup: Logout
+    await supabase.auth.signOut()
+    console.log("✅ Logged out")
+
     return {
       success: true,
       userId,
@@ -119,6 +123,9 @@ export async function testCustomerSelfRegistration() {
   } catch (error) {
 
     console.error("TEST FAILED:", error)
+
+    // Cleanup on error: Logout
+    await supabase.auth.signOut()
 
     return {
       success: false,
