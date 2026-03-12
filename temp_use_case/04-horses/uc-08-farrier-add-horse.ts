@@ -71,6 +71,7 @@ export async function farrierAddHorse(
       .select('id')
       .single();
 
+    console.log(horseError)
     if (horseError || !horseData) {
       return {
         success: false,
