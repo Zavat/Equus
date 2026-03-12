@@ -131,7 +131,10 @@ export async function testFarrierCreatesCustomer(
     console.log('📝 Step 4: Linking customer to farrier...');
     const step4Start = Date.now();
 
-    const linkResult = await linkCustomerToFarrier(farrierUserId, customerProfileId);
+    const linkResult = await linkCustomerToFarrier({
+      farrierProfileId: farrierProfileId,
+      customerProfileId: customerProfileId,
+    });
 
     steps.push({
       stepName: 'Link Customer to Farrier',
