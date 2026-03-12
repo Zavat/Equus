@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabase } from './supabase-test-client';
 import { listCustomerAppointments } from '../05-appointments/uc-15-list-customer-appointments';
 
 /**

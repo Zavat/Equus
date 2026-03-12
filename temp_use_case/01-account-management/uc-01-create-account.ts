@@ -52,20 +52,34 @@ export async function createAccount(input: CreateAccountInput): Promise<CreateAc
     const userId = authData.user.id;
 
     // Step 2: Recuperare il profilo e people creati dal trigger
-    // Aspettiamo un momento per permettere al trigger di completare
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // Retry logic per gestire race conditions con il trigger
+    let profileData = null;
+    let lastError = null;
+    const maxRetries = 5;
 
-    const { data: profileData, error: profileError } = await supabase
-      .from('profiles')
-      .select('id, person_id')
-      .eq('user_id', userId)
-      .single();
+    for (let i = 0; i < maxRetries; i++) {
+      await new Promise(resolve => setTimeout(resolve, 150 * (i + 1)));
 
-    if (profileError || !profileData) {
-      console.error('Profile retrieval error:', profileError);
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, person_id')
+        .eq('user_id', userId)
+        .single();
+
+      if (data) {
+        profileData = data;
+        break;
+      }
+
+      lastError = error;
+      console.log(`Retry ${i + 1}/${maxRetries} for profile retrieval`);
+    }
+
+    if (!profileData) {
+      console.error('Profile retrieval error:', lastError);
       return {
         success: false,
-        error: `Errore durante il recupero del profilo: ${profileError?.message}`,
+        error: `Errore durante il recupero del profilo: ${lastError?.message}`,
       };
     }
 

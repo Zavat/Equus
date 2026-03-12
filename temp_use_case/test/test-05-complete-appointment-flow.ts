@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabase } from './supabase-test-client';
 import { createAppointment } from '../05-appointments/uc-13-create-appointment';
 import { confirmAppointment } from '../05-appointments/uc-16-confirm-appointment';
 import { completeAppointment } from '../05-appointments/uc-17-complete-appointment';

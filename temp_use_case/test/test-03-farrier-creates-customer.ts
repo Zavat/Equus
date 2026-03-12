@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabase } from './supabase-test-client';
 import { createCustomerProfile } from '../02-customer-creation/uc-03-create-customer-without-account';
 import { linkCustomerToFarrier } from '../02-customer-creation/uc-04-link-customer-to-farrier';
 import { generateInvitation } from '../03-invitations/uc-05-generate-invitation';

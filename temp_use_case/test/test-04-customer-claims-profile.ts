@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabase } from './supabase-test-client';
 import { claimProfile } from '../03-invitations/uc-07-claim-profile';
 import { validateInvitationToken } from '../09-security/uc-24-validate-invitation-token';
 
